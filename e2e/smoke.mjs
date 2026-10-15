@@ -59,16 +59,16 @@ ok(maxY > 0.8, `Espaço salta (altura máx ${maxY.toFixed(2)})`);
 await sleep(900);
 
 const posA = await G('[g.body.x, g.body.z]');
-await page.keyboard.press('f'); await sleep(400);
-ok((await G('g.rig.mode')) === 'first', 'F → primeira pessoa');
+await page.keyboard.press('f');
+ok(await until("g.rig.mode === 'first'", 10000), 'F → primeira pessoa');
 await page.screenshot({ path: OUT + '03-primeira-pessoa.png' });
 const posB = await G('[g.body.x, g.body.z]');
 ok(Math.hypot(posA[0] - posB[0], posA[1] - posB[1]) < 0.05, 'trocar de câmera não move o personagem');
-await page.keyboard.press('f'); await sleep(400);
-ok((await G('g.rig.mode')) === 'orbital', 'F → orbital');
+await page.keyboard.press('f');
+ok(await until("g.rig.mode === 'orbital'", 10000), 'F → orbital');
 await page.screenshot({ path: OUT + '04-orbital.png' });
-await page.keyboard.press('f'); await sleep(300);
-ok((await G('g.rig.mode')) === 'third', 'F → terceira pessoa');
+await page.keyboard.press('f');
+ok(await until("g.rig.mode === 'third'", 10000), 'F → terceira pessoa');
 
 console.log('3. Pausa e observação');
 await page.keyboard.press('Escape');
