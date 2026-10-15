@@ -38,5 +38,5 @@ export const CHECKPOINTS: CheckpointDef[] = [
 export const NPCS: NpcDef[] = [
   { id: 'caramujo', kind: 'snail', name: 'Sr. Caramujo', x: 8, z: -82, yaw: -2.4, scale: 1.9 },
   { id: 'dario', kind: 'rival', name: 'Dário', x: -34, z: -36, yaw: 0.8 },
-  { id: 'beto', kind: 'beetle', name: 'Beto', x: 7, z: 76, yaw: -2.6 },
+  { id: 'beto', kind: 'beetle', name: 'Beto', x: 4, z: 75, yaw: -2.6 },
 ];

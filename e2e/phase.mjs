@@ -66,7 +66,7 @@ const steps = {
     await tp(0, 0, 64);
     await page.screenshot({ path: OUT + 'p7-ninho.png' });
     ok(await until("g.quests.currentObjective('ninho')?.id === 'beto'", 15000), 'entrou no Ninho Verde');
-    await talk(0, 72);
+    await talk(2, 72);
     ok(await waitState('complete'), 'falar com Beto conclui a Fase 7');
     await page.screenshot({ path: OUT + 'p7-vitoria.png' });
   },
