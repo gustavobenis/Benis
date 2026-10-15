@@ -23,7 +23,7 @@ export interface PuddleDef { id: string; x: number; z: number; r: number }
 export interface CheckpointDef { id: string; x: number; z: number; r: number }
 
 export interface Pickup { def: PickupDef; node: TransformNode; taken: boolean; marker: Mesh }
-export interface Npc { id: string; name: string; x: number; z: number; model: NpcModel; marker: Mesh }
+export interface Npc { id: string; name: string; x: number; z: number; model: NpcModel; marker: Mesh; /** Acompanha Marieta: só é o alvo da conversa se nenhum outro NPC estiver ao alcance. */ companion?: boolean }
 
 /** Dados para desenhar o mapa simplificado. */
 export interface MapData {
@@ -381,9 +381,12 @@ export abstract class LevelBase {
   restorePickups(): void { for (const p of this.pickups) { p.taken = false; p.node.setEnabled(true); } }
 
   nearestNpc(x: number, z: number, radius: number): Npc | undefined {
-    let best: Npc | undefined, bd = radius;
-    for (const n of this.npcs) { const d = Math.hypot(n.x - x, n.z - z); if (d < bd) { bd = d; best = n; } }
-    return best;
+    let best: Npc | undefined, bd = radius, comp: Npc | undefined, cd = radius;
+    for (const n of this.npcs) {
+      const d = Math.hypot(n.x - x, n.z - z);
+      if (n.companion) { if (d < cd) { cd = d; comp = n; } } else if (d < bd) { bd = d; best = n; }
+    }
+    return best ?? comp;
   }
 
   /** Atualização comum: coletáveis flutuando, NPCs animados/olhando, marcadores do modo de observação, relva. */

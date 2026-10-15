@@ -202,6 +202,7 @@ export class Level5 extends LevelBase {
     const bump = this.water.bumpTexture as Texture; bump.uOffset += dt * 0.05; bump.vOffset += dt * 0.01;
     // Beto acompanha Marieta
     const beto = this.npcs.find((n) => n.id === 'beto');
+    if (beto) beto.companion = this.joined;
     if (beto && this.joined) {
       const dx = playerPos.x - beto.x, dz = playerPos.z - beto.z, d = Math.hypot(dx, dz);
       if (d > 40) { beto.x = playerPos.x - 3; beto.z = playerPos.z - 3; }
