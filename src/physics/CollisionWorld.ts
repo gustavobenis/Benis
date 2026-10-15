@@ -207,6 +207,34 @@ export class CollisionWorld {
     return ev;
   }
 
+  /**
+   * Voo livre: integra a posição com a velocidade (vx,vy,vz), sem gravidade. O corpo é uma esfera de raio `r`
+   * centrada em y+r. Colide com o chão, com as laterais e com o topo das formas e fica dentro dos limites
+   * (expandidos por `pad`) e abaixo de `ceiling`. Retorna se algo foi tocado.
+   */
+  flyStep(b: Body, dt: number, vx: number, vy: number, vz: number, r = 0.5, ceiling = 40, pad = 8): { hit: boolean } {
+    b.vx = vx; b.vy = vy; b.vz = vz; b.grounded = false; b.climbing = false; b.support = null;
+    b.x += vx * dt; b.y += vy * dt; b.z += vz * dt;
+    let hit = false;
+    const [x0, x1, z0, z1] = this.bounds;
+    b.x = Math.min(x1 + pad, Math.max(x0 - pad, b.x)); b.z = Math.min(z1 + pad, Math.max(z0 - pad, b.z));
+    if (b.y > ceiling) { b.y = ceiling; b.vy = Math.min(0, b.vy); }
+    for (const s of this.shapes) {
+      const cy = b.y + r;
+      if (cy < s.yBase - r || cy - r > s.yTop) continue;
+      const pd = planarDistance(s, b.x, b.z);
+      const pen = r - pd.d;
+      if (pen <= 0) continue;
+      if (cy > s.yTop && cy - s.yTop < r) { b.y = s.yTop; hit = hit || b.vy < 0; if (b.vy < 0) b.vy = 0; continue; } // roçando o topo: sobe por cima
+      b.x += pd.nx * pen; b.z += pd.nz * pen; hit = true;
+      const vn = b.vx * pd.nx + b.vz * pd.nz;
+      if (vn < 0) { b.vx -= vn * pd.nx; b.vz -= vn * pd.nz; }
+    }
+    const g = this.groundAt(b.x, b.z, b.y + r, r).y;
+    if (b.y < g) { b.y = g; if (b.vy < 0) b.vy = 0; hit = true; }
+    return { hit };
+  }
+
   /** Empurra o corpo para fora de formas que bloqueiam (paredes). */
   private pushOut(b: Body): void {
     for (const s of this.shapes) {

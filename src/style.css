@@ -145,3 +145,15 @@ body.touch #hud-left #objective { position: static; max-width: 100%; }
 body.touch #hud-left #items { position: static; transform: none; max-width: 100%; }
 body.touch #toast { top: 34%; }
 #minimap { top: calc(max(58px, 4.2rem) + var(--safe-t)); }
+
+/* ---- modo de voo ---- */
+.flight-only, #flight-hud { display: none; }
+body.flight .flight-only { display: block; }
+body.flight #flight-hud { display: flex; position: absolute; left: 50%; bottom: calc(0.9rem + var(--safe-b)); transform: translateX(-50%); gap: 1.25rem; padding: 0.4rem 1.1rem; border-radius: 1.5rem; text-align: center; white-space: nowrap; }
+#flight-hud small { display: block; color: var(--gold); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.65em; }
+#flight-hud b { font-family: 'Baloo 2', sans-serif; font-size: 1.15em; }
+body.flight #hearts, body.flight #hud-left, body.flight #prompt, body.flight #objective { display: none !important; }
+body.flight.touch #flight-hud { bottom: auto; top: calc(max(58px, 4.2rem) + var(--safe-t)); left: calc(0.625rem + var(--safe-l)); transform: none; flex-direction: column; gap: 0.1rem; text-align: left; }
+@media (max-width: 767px) { body.flight.touch #flight-hud { flex-direction: row; gap: 0.8rem; max-width: calc(100vw - 7.5rem); } body.flight.touch #flight-hud span:last-child { display: none; } }
+body.flight #hint { bottom: calc(4.6rem + var(--safe-b)); }
+body.flight.touch #hint { bottom: calc(46% + var(--safe-b)); }

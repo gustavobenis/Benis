@@ -28,6 +28,7 @@
           <p class="tag">Pequena no tamanho, gigante no coração.</p>
           <button id="btn-new" class="btn primary">Jogar</button>
           <button id="btn-continue" class="btn" disabled>Continuar</button>
+          <button id="btn-fly" class="btn">🪽 Voo livre</button>
           <button id="btn-settings" class="btn">Configurações</button>
           <button id="btn-controls" class="btn">Como jogar</button>
           <button id="btn-credits" class="btn">Créditos</button>
@@ -45,9 +46,11 @@
         <div id="cam-label" class="chip"></div>
         <div id="top-btns">
           <button id="b-camera" class="icon" aria-label="Alternar câmera">🎥</button>
+          <button id="b-scene" class="icon flight-only" aria-label="Trocar cenário">🗺</button>
           <button id="b-full" class="icon" aria-label="Tela cheia">⛶</button>
           <button id="b-pause" class="icon" aria-label="Pausar">⏸</button>
         </div>
+        <div id="flight-hud" class="panel"><span><small>Altitude</small><b id="fl-alt">0 m</b></span><span><small>Velocidade</small><b id="fl-spd">0 km/h</b></span><span><small>Cenário</small><b id="fl-name"></b></span></div>
         <div id="prompt" class="panel hidden"></div>
         <div id="hint" class="panel hidden"></div>
         <div id="toast" class="panel hidden"></div>

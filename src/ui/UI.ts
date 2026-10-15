@@ -27,7 +27,7 @@ export const READY_PHASES = 8;
 export interface UIHandlers {
   newGame(level: number): void; continueGame(): void; resume(): void; toMenu(): void; freeRoam(): void; nextLevel(): void;
   settingsChanged(s: Settings): void; drawMap(c: HTMLCanvasElement): void; advanceDialogue(): void;
-  closeSettings(): void; closeControls(): void;
+  closeSettings(): void; closeControls(): void; startFlight(): void; nextScenery(): void;
 }
 
 const SLIDERS: [keyof Settings, string, number, number, number][] = [
@@ -43,6 +43,8 @@ export class UI {
 
   constructor(private h: UIHandlers, private settings: () => Settings) {
     $('btn-new').onclick = () => h.newGame(1);
+    $('btn-fly').onclick = () => h.startFlight();
+    $('b-scene').onclick = () => h.nextScenery();
     $('btn-credits').onclick = () => this.showScreen('credits');
     $('credits-close').onclick = () => this.showScreen('menu');
     $('complete-next').onclick = () => h.nextLevel();
@@ -74,6 +76,16 @@ export class UI {
   loadError(msg: string): void { const e = $('loaderr'); e.textContent = msg; e.classList.remove('hidden'); }
   enableContinue(on: boolean): void { ($('btn-continue') as HTMLButtonElement).disabled = !on; }
   applyScale(): void { document.documentElement.style.setProperty('--ui', String(this.settings().uiScale)); }
+  /** Liga/desliga o visual do modo de voo (HUD de altitude/velocidade, botões de toque renomeados). */
+  setFlightUi(on: boolean): void {
+    document.body.classList.toggle('flight', on);
+    const lab = (id: string, icon: string, text: string) => { $(id).innerHTML = `${icon}<small>${text}</small>`; };
+    if (on) { lab('t-jump', '⤒', 'Subir'); lab('t-interact', '⤓', 'Descer'); lab('t-observe', '⚡', 'Turbo'); }
+    else { lab('t-jump', '⤒', 'Pular'); lab('t-interact', '✋', 'Agir'); lab('t-observe', '👁', 'Observar'); }
+  }
+  flightInfo(alt: number, speed: number, scenery: string): void {
+    $('fl-alt').textContent = `${Math.max(0, alt).toFixed(0)} m`; $('fl-spd').textContent = `${(speed * 3.6).toFixed(0)} km/h`; $('fl-name').textContent = scenery;
+  }
   bindFullscreen(): void {
     const b = $('b-full'); const doc = document as Document & { webkitFullscreenElement?: Element };
     const root = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => void };

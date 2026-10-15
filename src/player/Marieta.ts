@@ -1,4 +1,4 @@
-import { Mesh, MeshBuilder, TransformNode, Vector3 } from '@babylonjs/core';
+import { Mesh, MeshBuilder, TransformNode } from '@babylonjs/core';
 import type { AbstractMesh, Scene } from '@babylonjs/core';
 import type { Materials } from '../levels/Materials';
 
@@ -14,6 +14,9 @@ export class MarietaModel {
   private wingOpen = 0;
   private blink = 0;
   private eyes: Mesh[] = [];
+  private elytra: TransformNode[] = [];
+  flightWings: { pivot: TransformNode; layers: Mesh[]; side: number }[] = [];
+  private flightBlend = 0; private flapPhase = 0;
 
   constructor(scene: Scene, m: Materials) {
     this.root = new TransformNode('marieta', scene);
@@ -28,28 +31,32 @@ export class MarietaModel {
       s.scaling.set(sx, sy, sz); s.position.set(x, y, z); return s;
     };
 
-    // Carapaça (élitros): elipsoide vermelha brilhante
+    // Carapaça: dois élitros (metades) com dobradiça na costura, para se abrirem em voo
     const R = { x: 0.52, y: 0.4, z: 0.62 }, C = { y: 0.56 };
-    part(sphere(1, R.x * 2, R.y * 2, R.z * 2, 0, C.y, -0.02), m.shell);
+    const HP = { y: C.y + R.y * 0.85, z: -0.02 }; // dobradiça: topo da costura
+    const spotSides: Mesh[][] = [[], []];
+    const dirs: [number, number, number][] = [[0.55, 0.8, -0.05], [-0.55, 0.8, -0.05], [0.85, 0.45, 0.25], [-0.85, 0.45, 0.25], [0.8, 0.5, -0.45], [-0.8, 0.5, -0.45], [0, 0.9, -0.55]];
+    [-1, 1].forEach((sx, k) => {
+      const el = new TransformNode('elytron', scene); el.parent = this.body; el.position.set(0, HP.y, HP.z);
+      const half = sphere(1, R.x * 1.12, R.y * 2, R.z * 2, sx * R.x * 0.5, C.y - HP.y, 0);
+      part(half, m.shell, el);
+      this.elytra.push(el);
+      for (const [dx, dy, dz] of dirs) {
+        if (dx !== 0 && Math.sign(dx) !== sx) continue;
+        if (dx === 0 && sx < 0) continue;
+        const l = Math.hypot(dx, dy, dz);
+        const sp = sphere(1, 0.2, 0.2, 0.2, (dx / l) * R.x * 0.99, C.y + (dy / l) * R.y * 0.99 - HP.y, -0.02 + (dz / l) * R.z * 0.99 - HP.z);
+        spotSides[k].push(sp);
+      }
+      part(Mesh.MergeMeshes(spotSides[k], true, true) as Mesh, m.black, el);
+    });
 
-    // Peças pretas fundidas num único mesh: abdômen inferior, pronoto, cabeça, linha central e manchas
-    const blacks: Mesh[] = [
+    // Peças pretas fundidas num único mesh: abdômen inferior, pronoto e cabeça
+    const black = Mesh.MergeMeshes([
       sphere(1, 0.95, 0.34, 1.15, 0, 0.34, -0.02),
       sphere(1, 0.74, 0.46, 0.4, 0, 0.6, 0.52),
       sphere(1, 0.62, 0.52, 0.56, 0, 0.5, 0.82),
-    ];
-    const dirs: [number, number, number][] = [[0.55, 0.8, -0.05], [-0.55, 0.8, -0.05], [0.85, 0.45, 0.25], [-0.85, 0.45, 0.25], [0.8, 0.5, -0.45], [-0.8, 0.5, -0.45], [0, 0.9, -0.55]];
-    for (const [dx, dy, dz] of dirs) {
-      const l = Math.hypot(dx, dy, dz);
-      const sp = sphere(1, 0.17, 0.17, 0.17, 0, 0, 0);
-      sp.position.set((dx / l) * R.x * 0.99, C.y + (dy / l) * R.y * 0.99, -0.02 + (dz / l) * R.z * 0.99);
-      sp.scaling.set(0.2, 0.2, 0.2);
-      blacks.push(sp);
-    }
-    const path: Vector3[] = [];
-    for (let a = -1.25; a <= 1.2; a += 0.12) path.push(new Vector3(0, C.y + R.y * Math.cos(a) * 1.005, -0.02 + R.z * Math.sin(a) * 1.005));
-    blacks.push(MeshBuilder.CreateTube('seam', { path, radius: 0.014, tessellation: 6 }, scene));
-    const black = Mesh.MergeMeshes(blacks, true, true) as Mesh;
+    ], true, true) as Mesh;
     part(black, m.black);
 
     // Manchas brancas do pronoto
@@ -102,9 +109,63 @@ export class MarietaModel {
       w.scaling.setAll(0.001);
       this.wings.push(w);
     }
+    // Asas traseiras de voo: membrana longa com nervura e camadas-fantasma que simulam o borrão do bater rápido
+    for (const sx of [-1, 1]) {
+      const pivot = new TransformNode('fwing', scene); pivot.parent = this.body; pivot.position.set(sx * 0.14, 0.95, 0.12);
+      const layers: Mesh[] = [];
+      [0.62, 0.3, 0.16].forEach((alpha, li) => {
+        const wm = m.white.clone(`fwingMat${sx}${li}`); wm.alpha = alpha; wm.albedoColor.set(0.88, 0.94, 1); wm.emissiveColor.set(0.1, 0.12, 0.14); wm.backFaceCulling = false;
+        const mesh = sphere(1, 2.1, 0.02, 0.62, sx * 0.98, 0, -0.35);
+        part(mesh, wm, pivot); mesh.setEnabled(false); layers.push(mesh);
+      });
+      pivot.setEnabled(false);
+      this.flightWings.push({ pivot, layers, side: sx });
+    }
   }
 
   setVisible(v: boolean): void { this.root.setEnabled(v); }
+
+  /**
+   * Animação de voo: élitros erguidos, asas traseiras batendo (com borrão), corpo oscilando no ritmo das batidas,
+   * pernas recolhidas e antenas para trás. `on=false` faz a transição de volta ao solo.
+   */
+  animateFlight(dt: number, on: boolean, speed01: number, bank: number, pitch: number, climb: number): void {
+    this.flightBlend += ((on ? 1 : 0) - this.flightBlend) * (1 - Math.exp(-9 * dt));
+    const fb = this.flightBlend;
+    const active = fb > 0.02;
+    this.flightWings.forEach((w) => w.pivot.setEnabled(active));
+    if (!active) { this.elytra.forEach((e) => { e.rotation.z = 0; }); return; }
+    // Frequência visual das batidas: sobe com o esforço (subir/acelerar)
+    const effort = Math.min(1, 0.45 + speed01 * 0.25 + Math.max(0, climb) * 0.4);
+    this.flapPhase += dt * Math.PI * 2 * (7 + 5 * effort);
+    const ph = this.flapPhase;
+    this.flightWings.forEach(({ pivot, layers, side }) => {
+      const amp = (0.75 + 0.25 * effort) * fb;
+      const flap = Math.sin(ph) * amp;
+      pivot.scaling.setAll(Math.max(0.001, fb));
+      pivot.rotation.z = side * (0.15 + flap);            // bater para cima e para baixo
+      pivot.rotation.y = side * Math.cos(ph) * 0.45 * fb; // varredura para frente e para trás (trajetória em oito)
+      pivot.rotation.x = Math.sin(ph) * 0.08;
+      layers.forEach((l, i) => {
+        l.setEnabled(true);
+        l.rotation.z = side * -Math.sin(ph - 0.55 * i) * 0.35 * fb * (i === 0 ? 0 : 1); // fantasmas defasados = borrão
+      });
+    });
+    // Élitros erguidos e trêmulos
+    this.elytra.forEach((e, i) => { e.rotation.z = (i === 0 ? -1 : 1) * (0.95 + Math.sin(ph * 0.5 + i) * 0.06) * fb; });
+    // Glide wings escondidas
+    this.wings.forEach((w) => w.scaling.setAll(0.001));
+    // Pernas recolhidas para trás
+    this.hips.forEach(({ hip, knee, side }) => {
+      hip.rotation.z += (side * 0.5 - hip.rotation.z) * fb; hip.rotation.x += (-0.7 - hip.rotation.x) * fb; knee.rotation.z += (-side * 1.1 - knee.rotation.z) * fb;
+    });
+    this.antennae.forEach((a) => { a.rotation.x += (-1.5 - a.rotation.x) * 0.2 * fb; });
+    // Corpo: cabeceia com as batidas, inclina para as curvas e para subidas/descidas
+    this.body.position.y = Math.sin(ph) * 0.045 * fb;
+    this.body.rotation.z += (-bank * 0.7 - this.body.rotation.z) * Math.min(1, dt * 8);
+    this.body.rotation.x += (pitch * -0.9 + Math.cos(ph) * 0.04 - this.body.rotation.x) * Math.min(1, dt * 8);
+    this.t += dt * 2;
+  }
 
   /** Animação procedural conforme o estado de movimento. */
   animate(dt: number, speed: number, grounded: boolean, gliding: boolean, climbing: boolean): void {

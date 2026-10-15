@@ -141,3 +141,27 @@ describe('Corrente de ar (updraft)', () => {
     expect(b.y).toBeLessThan(11);
   });
 });
+
+describe('Voo livre (flyStep)', () => {
+  it('avança sem gravidade e respeita o chão', () => {
+    const w = new CollisionWorld(); const b = createBody(0, 5, 0);
+    for (let i = 0; i < 30; i++) w.flyStep(b, 1 / 30, 0, 0, 6);
+    expect(b.z).toBeCloseTo(6, 1); expect(b.y).toBeCloseTo(5, 3);
+    for (let i = 0; i < 90; i++) w.flyStep(b, 1 / 30, 0, -8, 0);
+    expect(b.y).toBeGreaterThanOrEqual(0); expect(b.y).toBeLessThan(0.01);
+  });
+  it('não atravessa um tronco e sobrevoa o topo', () => {
+    const w = new CollisionWorld(); w.add({ kind: 'cyl', x: 0, z: 6, r: 1, yBase: 0, yTop: 4, surface: 'wood' });
+    const b = createBody(0, 1, 0); let hit = false;
+    for (let i = 0; i < 90; i++) hit = w.flyStep(b, 1 / 30, 0, 0, 6).hit || hit;
+    expect(hit).toBe(true); expect(b.z).toBeLessThan(6 - 1 + 0.01);
+    const c = createBody(0, 6, 0);
+    for (let i = 0; i < 90; i++) w.flyStep(c, 1 / 30, 0, 0, 6);
+    expect(c.z).toBeGreaterThan(8);
+  });
+  it('limita altitude e área', () => {
+    const w = new CollisionWorld(); const b = createBody(0, 10, 0);
+    for (let i = 0; i < 300; i++) w.flyStep(b, 1 / 30, 50, 50, 0, 0.5, 40, 8);
+    expect(b.y).toBeLessThanOrEqual(40); expect(b.x).toBeLessThanOrEqual(w.bounds[1] + 8 + 1e-6);
+  });
+});

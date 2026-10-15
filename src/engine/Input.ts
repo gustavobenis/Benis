@@ -9,6 +9,8 @@ export interface InputFrame {
   zoom: number;                 // delta de zoom (positivo = afastar)
   run: boolean;
   jumpHeld: boolean; jumpPressed: boolean;
+  boostHeld: boolean;   // voo: turbo (Shift / botão 👁)
+  descendHeld: boolean; // voo: descer (C / Ctrl / botão ✋)
   interact: boolean; observe: boolean; camera: boolean; pause: boolean;
   advance: boolean;             // avançar diálogo (E / Espaço / toque)
 }
@@ -164,6 +166,8 @@ export class Input {
       run,
       jumpHeld: this.enabled && (k('Space') || this.touchHeld.has('jump') || pad.jump),
       jumpPressed: this.enabled && jumpPressed,
+      boostHeld: this.enabled && (run || this.touchHeld.has('observe')),
+      descendHeld: this.enabled && (k('KeyC') || k('ControlLeft') || k('KeyX') || this.touchHeld.has('interact')),
       interact: this.enabled && (was('KeyE') || wasT('interact') || wasP('interact')),
       observe: this.enabled && (was('KeyQ') || wasT('observe') || wasP('observe')),
       camera: this.enabled && (was('KeyF') || wasT('camera') || wasP('camera')),

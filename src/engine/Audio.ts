@@ -18,6 +18,7 @@ export class GameAudio {
   private settings: Settings | null = null;
   private tensionTarget = 0;
   private rainGain: GainNode | null = null;
+  private buzz: { osc: OscillatorNode; lfo: OscillatorNode; amp: GainNode; depth: GainNode } | null = null;
 
   get ready(): boolean { return !!this.ctx; }
   get hasSprings(): boolean { return this.springs.length > 0; }
@@ -106,6 +107,26 @@ export class GameAudio {
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(900, t); lp.frequency.exponentialRampToValueAtTime(70, t + 2.4);
     const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(1.3, t + 0.06); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
     src.connect(lp); lp.connect(g); g.connect(this.buses.sfx); src.start(t, Math.random() * 1.5, 2.7);
+  }
+
+  /** Zumbido das asas em voo: `level` 0..1 (0 desliga), `rate` em batidas visuais por segundo. */
+  setBuzz(level: number, rate = 10): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    if (!this.buzz) {
+      if (level <= 0) return;
+      const osc = this.ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 150;
+      const lp = this.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100;
+      const amp = this.ctx.createGain(); amp.gain.value = 0;
+      const lfo = this.ctx.createOscillator(); lfo.frequency.value = rate;
+      const depth = this.ctx.createGain(); depth.gain.value = 0;
+      lfo.connect(depth); depth.connect(amp.gain);
+      osc.connect(lp); lp.connect(amp); amp.connect(this.buses.sfx); osc.start(); lfo.start();
+      this.buzz = { osc, lfo, amp, depth };
+    }
+    const b = this.buzz;
+    b.amp.gain.setTargetAtTime(0.05 * level, t, 0.1); b.depth.gain.setTargetAtTime(0.035 * level, t, 0.1);
+    b.lfo.frequency.setTargetAtTime(rate, t, 0.1); b.osc.frequency.setTargetAtTime(130 + level * 60, t, 0.2);
   }
 
   gust(): void { if (this.ctx) this.sweep(220, 520, 0.9, 0.06); }

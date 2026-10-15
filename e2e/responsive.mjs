@@ -46,7 +46,7 @@ const audit = () => {
 };
 // sobreposição entre blocos do HUD
 const overlaps = () => {
-  const ids = ['hearts', 'objective', 'items', 'minimap', 'top-btns', 't-jump', 't-interact', 't-observe', 'prompt', 'toast'];
+  const ids = ['hearts', 'objective', 'items', 'minimap', 'top-btns', 't-jump', 't-interact', 't-observe', 'prompt', 'toast', 'flight-hud'];
   const rs = ids.map((i) => document.getElementById(i)).filter((e) => e && e.getClientRects().length && !e.closest('.hidden')).map((e) => [e.id, e.getBoundingClientRect()]);
   const res = [];
   for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) {
@@ -96,6 +96,12 @@ for (const [w, h, touch] of CASES) {
   pr = await page.evaluate(() => { const el = document.querySelector('#pause .sheet'); const r = el.getBoundingClientRect(); return r.right <= innerWidth + 1 && r.left >= -1 && el.scrollWidth <= el.clientWidth + 2; });
   ok(pr, 'pausa cabe na tela');
   await page.screenshot({ path: OUT + `r-${label}-pause.png` });
+  // modo de voo
+  await G("(g.toMenu(), true)"); await sleep(300);
+  await page.click('#btn-fly'); ok(await until("g.state === 'playing' && g.flight"), 'voo iniciou'); await sleep(500);
+  pr = await page.evaluate(audit); ok(pr.length === 0, `HUD de voo sem problemas${pr.length ? ': ' + pr.join('; ') : ''}`);
+  const ov2 = await page.evaluate(overlaps); ok(ov2.length === 0, `HUD de voo sem sobreposição${ov2.length ? ': ' + ov2.join('; ') : ''}`);
+  await page.screenshot({ path: OUT + `r-${label}-voo.png` });
   ok(errors.length === 0, `sem erros de JS${errors.length ? ': ' + errors[0] : ''}`);
   await ctx.close();
 }

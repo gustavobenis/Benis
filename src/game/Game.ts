@@ -55,7 +55,7 @@ export class Game {
   private env!: Environment; level!: LevelBase; private rig!: CameraRig; private input!: Input;
   private audio = new GameAudio(); private ui!: UI; private save = new SaveManager();
   quests = new QuestLog([]); readonly inventory = new Inventory(); private dialogue = new DialogueRunner();
-  private model!: MarietaModel; private blob!: Mesh; private bird!: BirdShadow;
+  model!: MarietaModel; private blob!: Mesh; private bird!: BirdShadow;
   /** Corpo físico de Marieta (exposto para depuração/testes). */
   body: Body = createBody(0, 0, 0);
   private heading = 0; private flags = new Set<string>(); private collected = new Set<string>();
@@ -67,6 +67,9 @@ export class Game {
   private quality!: QualityLevel; private auto: AutoQuality | null = null;
   private hasSave = false; private menuYaw = 0; private unlocked = 1;
   private gliding = false; private lastSpeed = 0;
+  /** Modo "Voo livre": Marieta voa pelo cenário como num simulador. */
+  flight = false;
+  fly = { speed: 9, pitch: 0, bank: 0, camOff: 0, camYaw: 0, climb: 0 };
 
   /** Visão que as fases têm do jogo. */
   private host: LevelHost;
@@ -92,6 +95,7 @@ export class Game {
       settingsChanged: (s) => this.applySettings(s, true), drawMap: (c) => this.paintMap(c), advanceDialogue: () => this.advanceDialogue(),
       closeSettings: () => this.ui.showScreen(this.state === 'paused' ? 'pause' : 'menu'),
       closeControls: () => this.ui.showScreen(this.state === 'paused' ? 'pause' : 'menu'),
+      startFlight: () => this.startFlight(), nextScenery: () => this.nextScenery(),
     }, () => this.settings);
     this.ui.inventoryRef = this.inventory; this.ui.onBlip = () => this.audio.blip();
     step(0.05);
@@ -226,6 +230,62 @@ export class Game {
     this.bird.reset(); this.observing = false; this.env.setObserve(false); this.glideEnergy = 1; this.waterTime = 0;
   }
 
+  /* ---------- voo livre ---------- */
+  private startFlight(): void {
+    this.audio.init();
+    this.flight = true; this.ui.setFlightUi(true);
+    const st = this.level.info.start;
+    this.placePlayer(st.x, 7, st.z, true);
+    this.heading = 0; this.fly = { speed: 9, pitch: 0, bank: 0, camOff: 0, camYaw: 0, climb: 0 };
+    this.rig.setMode('third'); this.rig.yaw = 0; this.rig.pitch = 0.3;
+    this.hintShown.add('controls');
+    this.begin();
+    this.ui.hint(this.input.usingTouch ? 'Joystick: virar · ⤒ subir · ⤓ descer · ⚡ turbo' : 'A/D virar · W acelerar · S frear · Espaço subir · C descer · Shift turbo · 🗺 troca o cenário', 9000);
+  }
+
+  private nextScenery(): void {
+    if (!this.flight) return;
+    const n = (this.level.info.id % READY_PHASES) + 1;
+    this.ui.fade(true);
+    setTimeout(() => {
+      this.loadLevel(n); this.flight = true; this.ui.setFlightUi(true);
+      const st = this.level.info.start; this.placePlayer(st.x, 7, st.z, true);
+      this.audio.setRain(this.level.info.weather?.rain ?? 0);
+      this.ui.fade(false); this.ui.toast(`Cenário: ${this.level.info.title}`, 1800);
+    }, 450);
+  }
+
+  private updateFlight(dt: number, f: InputFrame): void {
+    const b = this.body, w = this.level.world, F = this.fly;
+    if (f.camera) { const m = this.rig.cycle(); this.ui.cameraLabel(CAMERA_LABEL[m]); this.audio.cameraSwitch(); }
+    const target = f.boostHeld ? 17 : f.moveY > 0.3 ? 13 : f.moveY < -0.3 ? 4.5 : 9;
+    F.speed += (target - F.speed) * (1 - Math.exp(-1.6 * dt));
+    // Curva: o leme gira o rumo; a inclinação (bank) acompanha com atraso
+    F.bank += (f.moveX * f.magnitude - F.bank) * (1 - Math.exp(-5 * dt));
+    this.heading += F.bank * (1.6 - 0.4 * F.speed / 17) * dt;
+    const wantPitch = (f.jumpHeld ? 0.55 : 0) - (f.descendHeld ? 0.6 : 0);
+    F.pitch += (wantPitch - F.pitch) * (1 - Math.exp(-4 * dt));
+    F.climb = wantPitch;
+    const hs = Math.cos(F.pitch) * F.speed;
+    const sink = F.speed < 6 ? (6 - F.speed) * 0.5 : 0; // devagar demais: perde sustentação
+    const res = w.flyStep(b, dt, Math.sin(this.heading) * hs, Math.sin(F.pitch) * F.speed - sink, Math.cos(this.heading) * hs);
+    if (res.hit) F.speed = Math.max(4.5, F.speed * (1 - dt * 1.5));
+    this.lastSpeed = F.speed;
+    // Câmera de perseguição: acompanha o rumo; o jogador pode olhar em volta e ela volta sozinha
+    const look = Math.abs(f.lookX) + Math.abs(f.lookY) > 1e-4;
+    F.camOff = look ? F.camOff + f.lookX : F.camOff * Math.exp(-1.4 * dt);
+    const want = this.heading + F.camOff;
+    let d = want - F.camYaw; d = Math.atan2(Math.sin(d), Math.cos(d)); F.camYaw += d * (1 - Math.exp(-5 * dt));
+    this.rig.yaw = F.camYaw;
+    if (look) this.rig.look(0, f.lookY, 0); else this.rig.pitch += (0.3 - F.pitch * 0.4 - this.rig.pitch) * (1 - Math.exp(-1.5 * dt));
+    this.rig.look(0, 0, f.zoom);
+    // Som: zumbido das asas
+    this.audio.setBuzz(0.5 + 0.5 * Math.min(1, F.speed / 17), 8 + 5 * Math.min(1, 0.45 + F.speed / 68 + Math.max(0, F.climb) * 0.4));
+    this.ui.flightInfo(b.y, F.speed, this.level.info.title);
+    if (f.pause) { this.pause(); return; }
+    this.updateWorld(dt, Math.min(1, F.speed / 17));
+  }
+
   private begin(): void {
     this.ui.showScreen(null);
     this.state = 'playing';
@@ -237,7 +297,7 @@ export class Game {
   pause(): void {
     if (this.state !== 'playing' && this.state !== 'dialogue') return;
     this.state = 'paused'; this.input.enabled = false; this.input.exitPointerLock();
-    this.ui.openPause(); this.ui.setTouch(false); this.audio.setTension(0); void this.flushSave();
+    this.ui.openPause(); this.ui.setTouch(false); this.audio.setTension(0); this.audio.setBuzz(0); void this.flushSave();
   }
   resume(): void {
     if (this.state !== 'paused') return;
@@ -247,6 +307,7 @@ export class Game {
 
   toMenu(first = false): void {
     if (!first) void this.flushSave();
+    if (this.flight) { this.flight = false; this.ui.setFlightUi(false); this.audio.setBuzz(0); this.rig.setMode('orbital'); }
     this.state = 'menu'; this.input.enabled = false; this.input?.exitPointerLock();
     this.dialogue.advance(); this.ui.hideDialogue(); this.ui.setHud(false); this.ui.setTouch(false); this.ui.prompt(null); this.ui.danger(0);
     this.audio.setTension(0); this.audio.stop(); this.audio.setRain(0);
@@ -291,6 +352,7 @@ export class Game {
   private queueSave(): void { this.saveDirty = true; this.saveTimer = 0.6; }
   private async flushSave(): Promise<void> {
     this.saveDirty = false;
+    if (this.flight) return; // voo livre nunca mexe no progresso salvo
     try { await this.save.saveGame(this.snapshot()); this.hasSave = true; } catch (e) { console.error('[save] falha ao salvar', e); }
   }
 
@@ -410,13 +472,15 @@ export class Game {
     const focus = partner ? new Vector3((b.x + partner.x) / 2, b.y, (b.z + partner.z) / 2) : feet;
     this.rig.update(dt, focus, speed01);
     this.env.update(dt, feet);
-    this.level.active = this.state === 'playing';
+    this.level.active = this.state === 'playing' && !this.flight;
     this.level.update(dt, feet, this.observing, this.env.hasPipeline);
     this.env.setFlash(this.level.flash);
     for (const e of this.level.events.splice(0)) { if (e === 'thunder') this.audio.thunder(); else if (e === 'gust') { this.audio.gust(); if (this.state === 'playing') this.ui.toast('💨 Rajada de vento! Abrigue-se sob uma folha.', 1800); } }
     this.model.root.position.set(b.x, b.y, b.z); this.model.root.rotation.y = this.heading;
     this.model.setVisible(this.rig.mode !== 'first' || this.state === 'menu');
-    this.model.animate(dt, this.lastSpeed, b.grounded, this.gliding, b.climbing);
+    const fl = this.flight && (this.state === 'playing' || this.state === 'paused');
+    this.model.animateFlight(dt, fl, this.fly.speed / 17, this.fly.bank, this.fly.pitch, this.fly.climb);
+    if (!fl) this.model.animate(dt, this.lastSpeed, b.grounded, this.gliding, b.climbing);
     const g = this.level.world.groundAt(b.x, b.z, b.y + 0.2, 0.3);
     this.blob.position.set(b.x, g.y + 0.04, b.z); this.blob.rotation.y = this.heading;
     const s = Math.max(0.35, 1 - (b.y - g.y) * 0.1); this.blob.scaling.set(s, 1, s);
@@ -426,6 +490,7 @@ export class Game {
 
   private updatePlaying(dt: number, f: InputFrame): void {
     if (f.pause) { this.pause(); return; }
+    if (this.flight) { this.updateFlight(dt, f); return; }
     const b = this.body, w = this.level.world;
     this.playTime += dt;
 
