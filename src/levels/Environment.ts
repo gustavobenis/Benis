@@ -29,7 +29,7 @@ export class Environment {
   private ssao: SSAO2RenderingPipeline | null = null;
   private rain: ParticleSystem | null = null;
   private rainAmount = 0; private rainRate = 400;
-  private baseExposure = 1.15;
+  private baseExposure = 1.15; private lastFlash = 0;
   private t = 0;
 
   constructor(private scene: Scene, private camera: Camera) {
@@ -108,7 +108,7 @@ export class Environment {
     this.sun.diffuse = new Color3(...l.sun); this.sun.intensity = l.sunI;
     this.hemi.intensity = l.hemiI; this.hemi.diffuse = new Color3(...l.sky); this.hemi.groundColor = new Color3(...l.ground);
     const ip = this.scene.imageProcessingConfiguration;
-    ip.exposure = l.exposure; this.baseExposure = l.exposure; ip.contrast = l.contrast;
+    ip.exposure = l.exposure; this.baseExposure = l.exposure; this.lastFlash = 0; ip.contrast = l.contrast;
     ip.colorCurvesEnabled = true;
     const cc = new ColorCurves(); cc.globalSaturation = l.saturation; cc.shadowsHue = l.shadowHue ?? 220; cc.shadowsSaturation = l.shadowHue ? 25 : 0; ip.colorCurves = cc;
   }
@@ -137,7 +137,12 @@ export class Environment {
     this.rain.start();
   }
   /** Relâmpago: clareia a cena brevemente (0..1). */
-  setFlash(v: number): void { this.scene.imageProcessingConfiguration.exposure = this.baseExposure + 2.2 * v; }
+  setFlash(v: number): void {
+    // Só regrava quando muda: alterar a exposição marca os materiais como sujos (custo por quadro).
+    if (Math.abs(v - this.lastFlash) < 0.01 && !(v === 0 && this.lastFlash !== 0)) return;
+    this.lastFlash = v;
+    this.scene.imageProcessingConfiguration.exposure = this.baseExposure + 2.2 * v;
+  }
 
   /** Névoa e cor de fundo de cada fase. */
   setAtmosphere(color: [number, number, number], density: number): void {
