@@ -3,7 +3,7 @@
 Aventura 3D de navegador protagonizada por **Marieta**, uma joaninha que atravessa a mata na escala de um inseto.
 Stack: **Babylon.js + TypeScript + Vite** (sem servidor; progresso salvo localmente em IndexedDB).
 
-> **Estado atual: protótipo jogável das Fases 1 (O Jardim), 2 (O Rio), 3 (A Floresta) e 4 (A Colônia).** As Fases 5–8 ainda não existem.
+> **Estado atual: protótipo jogável das Fases 1 (O Jardim), 2 (O Rio), 3 (A Floresta), 4 (A Colônia) e 5 (A Tempestade).** As Fases 6–8 ainda não existem.
 > Veja [o que está e o que não está pronto](#estado-do-projeto).
 
 ## Rodar no computador (Windows, macOS, Linux)
@@ -28,8 +28,9 @@ Para testar no celular na mesma rede Wi-Fi, abra no celular o endereço `Network
 
 O build (`npm run build` → pasta `dist/`) é um site estático, sem servidor. Três caminhos:
 
-1. **GitHub Pages (automático):** o workflow `.github/workflows/pages.yml` já está no repositório. No GitHub:
-   *Settings → Pages → Build and deployment → Source: **GitHub Actions***. A cada push ele roda typecheck e testes, gera o
+1. **GitHub Pages (automático):** o workflow `.github/workflows/pages.yml` já está no repositório (o job de build já roda verde
+   no GitHub). Falta só habilitar a publicação, em *Settings → Pages → Build and deployment → Source: **GitHub Actions***,
+   e permitir o branch em *Settings → Environments → github-pages → Deployment branches* (ou fazer merge na `main`). A cada push ele roda typecheck e testes, gera o
    build e publica em `https://<usuário>.github.io/<repositório>/`. (Em repositório privado o Pages exige plano pago.)
 2. **Netlify Drop (1 minuto, sem conta técnica):** rode `npm run build` e arraste a pasta `dist/` em https://app.netlify.com/drop.
 3. **Vercel / Cloudflare Pages:** conecte o repositório; comando de build `npm run build`, pasta de saída `dist`.
@@ -79,6 +80,9 @@ A aranha-caçadora (olhos vermelhos) patrulha o centro e enxerga bem de frente: 
 **Fase 4 — A Colônia:** converse com Lino → recolha 4 sementes (uma está no topo do formigueiro, que se escala com saltos) →
 abasteça o celeiro para abrir a barricada de gravetos → chegue à câmara e fale com a Rainha Formiga. Um louva-a-deus de grande
 alcance patrulha o centro: use os túneis de terra como cobertura. Formigas operárias carregam folhas pelas trilhas.
+**Fase 5 — A Tempestade:** chuva e vento forte. Converse com Beto (que passa a acompanhar Marieta) → junte 3 folhas firmes →
+construa a jangada na beira da enchente → atravesse até a colina → fale com Zuzu. Um círculo brilhante no chão avisa onde um raio
+vai cair (saia dele!); rajadas empurram quem está sem cobertura (abrigue-se sob folhas).
 **Vida:** 3 corações; o pássaro e a correnteza tiram um, gotas de orvalho devolvem um. Sem game over.
 
 **Fase 1:** converse com Tito → colete 5 gotas de orvalho → molhe a folha-portão → chegue ao abrigo.
@@ -100,7 +104,8 @@ Opcional: 3 sementes escondidas. Cuidado com a **sombra do pássaro**: esconda-s
 | Qualidade gráfica auto/eco/equilibrada/alta (alta inclui SSAO e luz/gradação por fase) | ⚠️ implementada; **FPS real e SSAO não medidos/vistos em GPU real** (só havia renderização por software) |
 | Fase 3 (floresta, trampolins, teias, aranha-caçadora, altar, Tico, Dona Olívia) | ✅ jogável de ponta a ponta (e2e) |
 | Fase 4 (formigueiro, louva-a-deus, celeiro, Rainha Formiga, Lino) | ✅ jogável de ponta a ponta (e2e) |
-| Fases 5–8 (Tempestade, Vale das Flores, Ninho Verde, Juntos Sempre), demais amigos (Zuzu, Freddy, Rita, Sr. Caramujo), Dário, romance | ❌ não iniciado |
+| Fase 5 (chuva, vento, raios avisados, enchente com jangada, Beto companheiro, Zuzu) | ✅ jogável de ponta a ponta (e2e) |
+| Fases 6–8 (Vale das Flores, Ninho Verde, Juntos Sempre), demais amigos (Freddy, Rita, Sr. Caramujo), Dário, cenas românticas finais | ❌ não iniciado |
 | Modelos Blender/GLB, animações autorais, gravações de áudio | ❌ arte atual é procedural (placeholder de qualidade de protótipo) |
 | Testes em iPhone/Safari e Android reais | ❌ pendente |
 
