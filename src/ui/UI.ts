@@ -139,8 +139,14 @@ export class UI {
   minimap(): HTMLCanvasElement { return $('minimap') as HTMLCanvasElement; }
 
   /* ---------- diálogo ---------- */
+  /** Ícone de cada personagem na caixa de diálogo. */
+  private static readonly ICONS: Record<string, string> = {
+    Tito: '🐌', 'Sr. Caramujo': '🐌', Lino: '🐜', 'Rainha Formiga': '👑', Luna: '🦋', Beto: '🪲', Dário: '🪲', Tico: '🦗', Freddy: '🎸',
+    'Dona Olívia': '🕷️', Zuzu: '🐛', Rita: '🪰',
+  };
   showDialogue(speaker: string, text: string): void {
     $('dialogue').classList.remove('hidden');
+    $('dlg-icon').textContent = UI.ICONS[speaker] ?? '💬';
     $('dlg-name').textContent = speaker;
     this.typing = { text, i: 0, done: false, acc: 0 };
     $('dlg-text').textContent = '';

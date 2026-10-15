@@ -3,7 +3,7 @@
 Aventura 3D de navegador protagonizada por **Marieta**, uma joaninha que atravessa a mata na escala de um inseto.
 Stack: **Babylon.js + TypeScript + Vite** (sem servidor; progresso salvo localmente em IndexedDB).
 
-> **Estado atual: protótipo jogável das Fases 1 a 6 (Jardim, Rio, Floresta, Colônia, Tempestade e Vale das Flores).** As Fases 7–8 ainda não existem.
+> **Estado atual: as 8 fases estão jogáveis, do Jardim ao final com Beto.** Link público: https://gustavobenis.github.io/Benis/
 > Veja [o que está e o que não está pronto](#estado-do-projeto).
 
 ## Rodar no computador (Windows, macOS, Linux)
@@ -50,7 +50,8 @@ Testes de ponta a ponta (Playwright + Chromium; WebGL por software é lento, mas
 
 ```bash
 npm run dev &
-CHROMIUM_PATH=/caminho/do/chrome BASE_URL=http://localhost:5173 npm run e2e   # desktop: fluxo completo
+CHROMIUM_PATH=/caminho/do/chrome BASE_URL=http://localhost:5173 npm run e2e   # desktop: fluxo das fases 1 a 6 (um teste por vez!)
+PHASE=7 CHROMIUM_PATH=... BASE_URL=... node e2e/phase.mjs   # testa só a fase 7 (ou 8) isolada
 CHROMIUM_PATH=... BASE_URL=... node e2e/mobile.mjs                              # celular: toque real (CDP)
 ```
 
@@ -86,6 +87,12 @@ vai cair (saia dele!); rajadas empurram quem está sem cobertura (abrigue-se sob
 **Fase 6 — O Vale das Flores:** converse com Rita (libélula) → colete 4 flores raras no topo de flores gigantes: entre numa
 coluna de pólen dourado **estando no ar** e a corrente quente leva você para cima; passe da altura da flor e vá em direção a ela →
 replante o Jardim da Esperança (o vale floresce) → suba ao mirante e fale com Freddy (grilo músico).
+**Fase 7 — O Ninho Verde:** converse com o Sr. Caramujo → junte 6 folhas macias → erga as paredes (3 folhas) e cubra o telhado
+(3 folhas) → entre no ninho e fale com Beto. Opcional: entregue 2 sementes ao rival Dário e ele faz as pazes e ajuda.
+
+**Fase 8 — Juntos Sempre:** converse com Rita → registre 4 fotos dos grupos de amigos reunidos no vale → monte o mural na praça →
+suba ao mirante do nascer do sol → cena final com Beto, com câmera de cinema. Depois, exploração livre.
+
 **Vida:** 3 corações; o pássaro e a correnteza tiram um, gotas de orvalho devolvem um. Sem game over.
 
 **Fase 1:** converse com Tito → colete 5 gotas de orvalho → molhe a folha-portão → chegue ao abrigo.
@@ -109,7 +116,8 @@ Opcional: 3 sementes escondidas. Cuidado com a **sombra do pássaro**: esconda-s
 | Fase 4 (formigueiro, louva-a-deus, celeiro, Rainha Formiga, Lino) | ✅ jogável de ponta a ponta (e2e) |
 | Fase 5 (chuva, vento, raios avisados, enchente com jangada, Beto companheiro, Zuzu) | ✅ jogável de ponta a ponta (e2e) |
 | Fase 6 (flores gigantes, correntes de ar quente, jardim que floresce, Rita, Freddy) | ✅ jogável de ponta a ponta (e2e) |
-| Fases 7–8 (Ninho Verde, Juntos Sempre), Sr. Caramujo, Dário, cenas românticas finais | ❌ não iniciado |
+| Fase 7 (ninho em construção, Sr. Caramujo, escolha de confiar em Dário) | ✅ jogável (e2e/phase.mjs) |
+| Fase 8 (vale florido, mural, cena final com câmera de cinema) | ✅ jogável (e2e/phase.mjs) |
 | Modelos Blender/GLB, animações autorais, gravações de áudio | ❌ arte atual é procedural (placeholder de qualidade de protótipo) |
 | Testes em iPhone/Safari e Android reais | ❌ pendente |
 

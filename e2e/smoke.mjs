@@ -346,12 +346,12 @@ ok(await until("g.quests.currentObjective('vale')?.id === 'freddy'", 15000), 'ch
 await talk(0, 86);
 ok(await waitState('complete'), 'falar com Freddy conclui a Fase 6');
 await page.screenshot({ path: OUT + '29-fase6-vitoria.png' });
-ok(!(await page.isVisible('#complete-next')), 'Fase 6 é a última disponível: sem botão de próxima fase');
+ok(await page.isVisible('#complete-next'), 'Fase 6 concluída oferece a Fase 7 (as Fases 7 e 8 têm teste próprio: e2e/phase.mjs)');
 
 console.log('8. Rio: correnteza, resgate e coração');
 await page.click('#complete-menu');
 ok(await waitState('menu'), 'volta ao menu');
-ok((await page.locator('.phase:not(.locked)').count()) === 6, 'seleção de fases mostra 6 fases liberadas');
+ok((await page.locator('.phase:not(.locked)').count()) === 7, 'seleção de fases mostra 7 fases liberadas (a 7ª liberada ao concluir a 6ª)');
 page.once('dialog', (d) => d.accept());
 await page.locator('.phase').nth(1).click();
 ok(await waitState('playing'), 'iniciar a Fase 2 pela seleção');
