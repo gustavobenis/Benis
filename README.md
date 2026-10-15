@@ -24,6 +24,18 @@ Para jogar a versão otimizada (build de produção): `npm run play` (leva algun
 Para testar no celular na mesma rede Wi-Fi, abra no celular o endereço `Network` que o `npm run dev` mostra
 (o toque funciona; o áudio e alguns recursos exigem HTTPS ao publicar).
 
+## Publicar com link público
+
+O build (`npm run build` → pasta `dist/`) é um site estático, sem servidor. Três caminhos:
+
+1. **GitHub Pages (automático):** o workflow `.github/workflows/pages.yml` já está no repositório. No GitHub:
+   *Settings → Pages → Build and deployment → Source: **GitHub Actions***. A cada push ele roda typecheck e testes, gera o
+   build e publica em `https://<usuário>.github.io/<repositório>/`. (Em repositório privado o Pages exige plano pago.)
+2. **Netlify Drop (1 minuto, sem conta técnica):** rode `npm run build` e arraste a pasta `dist/` em https://app.netlify.com/drop.
+3. **Vercel / Cloudflare Pages:** conecte o repositório; comando de build `npm run build`, pasta de saída `dist`.
+
+O jogo exige HTTPS para áudio e recursos do navegador em celulares; todos os caminhos acima já servem em HTTPS.
+
 ## Comandos
 
 ```bash
