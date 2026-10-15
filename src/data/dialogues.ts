@@ -55,3 +55,71 @@ export function pickDialogue(npc: string, q: QuestLog): DialogueDef {
   if (seeds.status === 'done') return D.tito_end_finish;
   return D.tito_end_default;
 }
+
+const R: Record<string, DialogueDef> = {
+  lino_intro: {
+    id: 'lino_intro', speaker: 'Lino',
+    lines: [
+      'Opa! Uma joaninha! Eu sou o Lino, formiga trabalhadora. Trabalho nesta margem desde antes do sol nascer.',
+      'O rio cresceu depois da tempestade. A correnteza leva qualquer um que ficar na água por muito tempo!',
+      'Eu sei construir uma ponte com folhas especiais, mas preciso de três. Procure-as nesta margem, as boas têm um brilho verde.',
+      'Se preferir arriscar, há pedras e folhas flutuantes. Mas cuidado: se a água te pegar, ela não perdoa.',
+    ],
+    onEnd: ['talk:lino'],
+  },
+  lino_again: { id: 'lino_again', speaker: 'Lino', lines: ['Três folhas especiais, certo? Elas brilham em verde. Olhe nas pedras e perto dos cogumelos.'] },
+  lino_bridge: { id: 'lino_bridge', speaker: 'Lino', lines: ['Você tem as folhas! Venha até a beira do rio, perto de mim, e vamos construir a ponte juntos.'] },
+  lino_after: { id: 'lino_after', speaker: 'Lino', lines: ['Boa travessia, Marieta! Fale com a Luna, na outra margem. Ela conhece tudo por aqui.'] },
+  luna_early: { id: 'luna_early', speaker: 'Luna', lines: ['Vejo você daí, pequena! Ainda não dá para conversar com o rio no meio. Chegue até aqui.'] },
+  luna_intro: {
+    id: 'luna_intro', speaker: 'Luna',
+    lines: [
+      'Que corajosa! Eu sou a Luna. Sou borboleta, e das alturas vejo tudo o que acontece na mata.',
+      'Vi alguém ajudando os que se perdem perto da água: um besouro de carapaça verde-esmeralda, chamado Beto.',
+      'Ele está logo adiante, perto da grande pedra. Vá encontrá-lo!',
+    ],
+    onEnd: ['talk:luna'],
+  },
+  luna_after: { id: 'luna_after', speaker: 'Luna', lines: ['Beto fica logo adiante, perto da grande pedra. Ele é gentil, você vai gostar dele.'] },
+  beto_rescue: {
+    id: 'beto_rescue', speaker: 'Beto',
+    lines: [
+      'Calma, calma! Segure firme. A correnteza levou você, mas eu te peguei.',
+      'Eu sou o Beto. Costumo ficar por aqui para ajudar quem cai no rio.',
+      'Você está bem? Que bom! Vi que não desistiu de atravessar. Isso é coragem de verdade.',
+      'Descanse um pouco. Quando quiser, fale comigo de novo.',
+    ],
+    onEnd: ['flag:metBeto'],
+  },
+  beto_intro: {
+    id: 'beto_intro', speaker: 'Beto',
+    lines: [
+      'Então é você a joaninha de quem a Luna falou! Prazer, eu sou o Beto.',
+      'Cuido desta margem. Quem atravessa o rio costuma chegar assustado, mas você chegou com um sorriso.',
+      'Se você precisar de ajuda, é só chamar. A mata é grande, mas não precisa ser enfrentada sozinha.',
+      'Tem uma floresta logo adiante, cheia de desafios. Vamos juntos?',
+    ],
+    onEnd: ['flag:metBeto', 'talk:beto'],
+  },
+  beto_after: { id: 'beto_after', speaker: 'Beto', lines: ['A Floresta nos espera. Estou pronto quando você estiver, Marieta.'] },
+};
+
+/** Diálogos da Fase 2 conforme o estado das missões. */
+export function pickRioDialogue(npc: string, q: QuestLog, flags: Set<string>): DialogueDef {
+  const st = q.state('rio');
+  if (npc === 'lino') {
+    if (st.status === 'active' && st.objective === 0) return R.lino_intro;
+    if (st.status === 'active' && st.objective === 1) return R.lino_again;
+    if (st.status === 'active' && st.objective === 2) return R.lino_bridge;
+    return R.lino_after;
+  }
+  if (npc === 'luna') {
+    if (st.status === 'active' && st.objective === 4) return R.luna_intro;
+    if (st.status === 'active' && st.objective < 4) return R.luna_early;
+    return R.luna_after;
+  }
+  // beto
+  if (st.status === 'active' && st.objective === 5) return R.beto_intro;
+  if (!flags.has('metBeto')) return R.beto_rescue;
+  return R.beto_after;
+}

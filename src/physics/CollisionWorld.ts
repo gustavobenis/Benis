@@ -7,6 +7,9 @@
  */
 export type Surface = 'soil' | 'leaf' | 'stone' | 'wood' | 'moss';
 
+/** Plataforma que se move (folhas flutuantes): oscila em torno de (cx,cz). */
+export interface Mover { ax: number; az: number; speed: number; phase: number; cx: number; cz: number; dx: number; dz: number }
+
 interface Base {
   /** Altura da base da forma (parte de baixo). */
   yBase: number;
@@ -17,10 +20,13 @@ interface Base {
   climbable?: boolean;
   /** Impede a passagem horizontal por baixo? (padrão: sim quando yBase < altura do corpo) */
   id?: string;
+  move?: Mover;
 }
 export interface CylinderShape extends Base { kind: 'cyl'; x: number; z: number; r: number }
 export interface BoxShape extends Base { kind: 'box'; x: number; z: number; hx: number; hz: number; yaw: number }
 export type Shape = CylinderShape | BoxShape;
+
+export interface WaterRect { minX: number; maxX: number; minZ: number; maxZ: number; flowX: number; flowZ: number }
 
 export interface Zone { id: string; x: number; z: number; r: number; type: 'puddle' | 'checkpoint' | 'goal' | 'glide' }
 
@@ -32,13 +38,16 @@ export interface Body {
   grounded: boolean;
   surface: Surface;
   climbing: boolean;
+  /** Na água (sem apoio): arrastado pela correnteza. */
+  inWater: boolean;
+  support: Shape | null;
 }
 
 export const GRAVITY = 24;
 export const STEP_HEIGHT = 0.7;
 
 export function createBody(x: number, y: number, z: number): Body {
-  return { x, y, z, vx: 0, vy: 0, vz: 0, radius: 0.45, height: 0.7, grounded: false, surface: 'soil', climbing: false };
+  return { x, y, z, vx: 0, vy: 0, vz: 0, radius: 0.45, height: 0.7, grounded: false, surface: 'soil', climbing: false, inWater: false, support: null };
 }
 
 /** Distância assinada simplificada ponto→forma no plano XZ (negativo = dentro). */
@@ -71,6 +80,7 @@ function planarDistance(s: Shape, px: number, pz: number): { d: number; nx: numb
 export class CollisionWorld {
   readonly shapes: Shape[] = [];
   readonly zones: Zone[] = [];
+  readonly waters: WaterRect[] = [];
   /** Retângulo jogável: [minX, maxX, minZ, maxZ]. */
   bounds: [number, number, number, number] = [-40, 40, -60, 60];
   killY = -8;
@@ -78,15 +88,29 @@ export class CollisionWorld {
   add(s: Shape): Shape { this.shapes.push(s); return s; }
 
   /** Altura e material do chão sob (x,z) alcançável a partir de `feet`. */
-  groundAt(x: number, z: number, feet: number, radius = 0.2): { y: number; surface: Surface } {
+  groundAt(x: number, z: number, feet: number, radius = 0.2): { y: number; surface: Surface; shape: Shape | null } {
     let y = 0;
     let surface: Surface = 'soil';
+    let shape: Shape | null = null;
     for (const s of this.shapes) {
       if (s.yTop > feet + STEP_HEIGHT) continue;
       if (s.yTop <= y) continue;
-      if (planarDistance(s, x, z).d < radius) { y = s.yTop; surface = s.surface; }
+      if (planarDistance(s, x, z).d < radius) { y = s.yTop; surface = s.surface; shape = s; }
     }
-    return { y, surface };
+    return { y, surface, shape };
+  }
+
+  /** Atualiza plataformas móveis para o instante `t` e guarda o deslocamento do quadro (para carregar quem está em cima). */
+  updateMovers(t: number): void {
+    for (const s of this.shapes) {
+      const m = s.move; if (!m) continue;
+      const nx = m.cx + Math.sin(t * m.speed + m.phase) * m.ax, nz = m.cz + Math.sin(t * m.speed + m.phase) * m.az;
+      m.dx = nx - s.x; m.dz = nz - s.z; s.x = nx; s.z = nz;
+    }
+  }
+
+  waterAt(x: number, z: number): WaterRect | undefined {
+    return this.waters.find((w) => x >= w.minX && x <= w.maxX && z >= w.minZ && z <= w.maxZ);
   }
 
   /** Há algo acima da cabeça que cubra (x,z)? Usado para "abrigo" contra o pássaro. */
@@ -108,6 +132,9 @@ export class CollisionWorld {
    */
   step(b: Body, dt: number, wishX: number, wishZ: number, opts: { accel: number; jump: boolean; jumpSpeed: number; glide: boolean; climb: boolean; climbSpeed: number }): { landed: boolean; jumped: boolean } {
     const ev = { landed: false, jumped: false };
+    // Carregado por plataforma móvel
+    if (b.grounded && b.support?.move) { b.x += b.support.move.dx; b.z += b.support.move.dz; }
+
     // Aceleração horizontal suave
     const k = 1 - Math.exp(-opts.accel * dt);
     b.vx += (wishX - b.vx) * k;
@@ -138,6 +165,10 @@ export class CollisionWorld {
 
     // Vertical
     const g = this.groundAt(b.x, b.z, b.y, b.radius * 0.6);
+    // Água: sem apoio e no nível da água, a correnteza arrasta
+    const water = this.waterAt(b.x, b.z);
+    b.inWater = !!water && b.grounded && g.shape === null && b.y <= 0.05;
+    if (b.inWater && water) { b.x += water.flowX * dt; b.z += water.flowZ * dt; }
     if (b.climbing) {
       b.vy = opts.climbSpeed;
       b.y += b.vy * dt;
@@ -156,11 +187,11 @@ export class CollisionWorld {
       }
       if (b.y <= g.y && b.vy <= 0) {
         if (!b.grounded && b.vy < -4) ev.landed = true;
-        b.y = g.y; b.vy = 0; b.grounded = true; b.surface = g.surface;
+        b.y = g.y; b.vy = 0; b.grounded = true; b.surface = g.surface; b.support = g.shape;
       } else if (b.y - g.y > 0.08) {
         b.grounded = false;
       } else if (b.vy <= 0) {
-        b.y = g.y; b.vy = 0; b.grounded = true; b.surface = g.surface;
+        b.y = g.y; b.vy = 0; b.grounded = true; b.surface = g.surface; b.support = g.shape;
       }
     }
     return ev;

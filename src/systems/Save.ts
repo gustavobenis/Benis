@@ -89,6 +89,13 @@ export class SaveManager {
     return isValidSave(d) ? d : null;
   }
   async deleteGame(): Promise<void> { await this.safe((kv) => kv.del('save')); }
+  /** Progresso global (independe do jogo salvo): fases liberadas. */
+  async loadMeta(): Promise<{ unlocked: number }> {
+    const m = (await this.safe((kv) => kv.get('meta'))) as { unlocked?: unknown } | undefined;
+    const u = typeof m?.unlocked === 'number' && Number.isFinite(m.unlocked) ? Math.max(1, Math.floor(m.unlocked)) : 1;
+    return { unlocked: u };
+  }
+  async saveMeta(m: { unlocked: number }): Promise<void> { await this.safe((kv) => kv.set('meta', m)); }
   async saveSettings(s: Settings): Promise<void> { await this.safe((kv) => kv.set('settings', s)); }
   async loadSettings(): Promise<Settings> { return sanitizeSettings(await this.safe((kv) => kv.get('settings'))); }
 }

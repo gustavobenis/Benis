@@ -6,6 +6,8 @@
     <meta name="theme-color" content="#1d5436" />
     <meta name="description" content="Marieta: A Grande Aventura na Mata — uma aventura 3D de joaninha no navegador." />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='18' r='12' fill='%23d92e3d'/%3E%3Ccircle cx='16' cy='8' r='6' fill='%23111'/%3E%3Ccircle cx='11' cy='19' r='2.5' fill='%23111'/%3E%3Ccircle cx='21' cy='19' r='2.5' fill='%23111'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@500;700&display=swap" />
     <title>Marieta: A Grande Aventura na Mata</title>
   </head>
   <body>
@@ -22,25 +24,27 @@
       <div id="menu" class="screen hidden">
         <div class="menu-card">
           <h1 class="logo">Marieta</h1>
-          <p class="sub">Uma grande aventura na mata</p>
+          <p class="sub">Uma grande aventura</p>
           <p class="tag">Pequena no tamanho, gigante no coração.</p>
-          <button id="btn-new" class="btn primary">Novo jogo</button>
+          <button id="btn-new" class="btn primary">Jogar</button>
           <button id="btn-continue" class="btn" disabled>Continuar</button>
           <button id="btn-settings" class="btn">Configurações</button>
           <button id="btn-controls" class="btn">Como jogar</button>
-          <p class="ver">Protótipo jogável · Fase 1 — O Jardim das Gotas</p>
+          <button id="btn-credits" class="btn">Créditos</button>
         </div>
+        <div id="levels" class="panel"><small>Seleção de fases</small><div id="levels-row"></div></div>
       </div>
 
       <div id="hud" class="hidden">
-        <div id="objective" class="panel"><small id="obj-quest"></small><b id="obj-text"></b><div class="pbar hidden" id="obj-pbar"><i id="obj-bar"></i></div></div>
-        <div id="items" class="panel"></div>
-        <canvas id="minimap" width="96" height="160" aria-label="Mapa simplificado"></canvas>
+        <div id="hearts" aria-label="Vida"></div>
+        <div id="objective" class="panel"><i class="coin"></i><div><small id="obj-quest"></small><b id="obj-text"></b><div class="pbar hidden" id="obj-pbar"><i id="obj-bar"></i></div></div></div>
+        <canvas id="minimap" width="150" height="150" aria-label="Minimapa"></canvas>
         <div id="cam-label" class="chip"></div>
         <div id="top-btns">
           <button id="b-camera" class="icon" aria-label="Alternar câmera">🎥</button>
           <button id="b-pause" class="icon" aria-label="Pausar">⏸</button>
         </div>
+        <div id="items" class="panel"></div>
         <div id="prompt" class="panel hidden"></div>
         <div id="hint" class="panel hidden"></div>
         <div id="toast" class="panel hidden"></div>
@@ -94,12 +98,22 @@
         </div>
       </div>
 
+      <div id="credits" class="screen hidden">
+        <div class="sheet center">
+          <h2>Créditos</h2>
+          <p>Marieta: A Grande Aventura na Mata<br>Protótipo jogável — ideia original de Gustavo.</p>
+          <p>Construído com Babylon.js, TypeScript e Vite.<br>Arte, música e sons gerados por código.</p>
+          <button class="btn primary" id="credits-close">Voltar</button>
+        </div>
+      </div>
+
       <div id="complete" class="screen hidden">
         <div class="sheet center">
-          <h2>Jardim concluído!</h2>
+          <h2 id="complete-title">Fase concluída!</h2>
           <p id="complete-text"></p>
           <div id="complete-stats"></div>
-          <button class="btn primary" id="complete-free">Explorar livremente</button>
+          <button class="btn primary hidden" id="complete-next">Próxima fase</button>
+          <button class="btn" id="complete-free">Explorar livremente</button>
           <button class="btn" id="complete-menu">Menu inicial</button>
         </div>
       </div>

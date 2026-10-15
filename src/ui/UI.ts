@@ -1,5 +1,5 @@
 import type { Settings } from '../systems/Settings';
-import { ITEM_INFO, type Inventory } from '../systems/Inventory';
+import { ITEM_INFO, ITEM_ORDER, type Inventory, type ItemId } from '../systems/Inventory';
 import type { QuestLog } from '../systems/Quests';
 
 const $ = <T extends HTMLElement>(id: string): T => {
@@ -8,11 +8,24 @@ const $ = <T extends HTMLElement>(id: string): T => {
   return el as T;
 };
 
-type ScreenId = 'loading' | 'menu' | 'pause' | 'settings' | 'controls' | 'complete';
-const SCREENS: ScreenId[] = ['loading', 'menu', 'pause', 'settings', 'controls', 'complete'];
+type ScreenId = 'loading' | 'menu' | 'pause' | 'settings' | 'controls' | 'complete' | 'credits';
+const SCREENS: ScreenId[] = ['loading', 'menu', 'pause', 'settings', 'controls', 'complete', 'credits'];
+
+/** As 8 fases da arte de referência; só as marcadas `ready` existem. */
+export const PHASES = [
+  { name: 'O Jardim', sub: 'Início da Jornada', art: 'radial-gradient(circle at 40% 35%,#9fe07a,#2e7a4a 70%)' },
+  { name: 'O Rio', sub: 'Novos Amigos', art: 'radial-gradient(circle at 40% 35%,#bfeee6,#2f7f8f 70%)' },
+  { name: 'A Floresta', sub: 'Desafios', art: 'radial-gradient(circle at 40% 35%,#8fd08a,#1d5436 70%)' },
+  { name: 'A Colônia', sub: 'Em Perigo', art: 'radial-gradient(circle at 40% 35%,#f1b46a,#7a4a22 70%)' },
+  { name: 'A Tempestade', sub: 'Grande Prova', art: 'radial-gradient(circle at 40% 35%,#6b7fb8,#1d2340 70%)' },
+  { name: 'O Vale das Flores', sub: 'Esperança', art: 'radial-gradient(circle at 40% 35%,#f58ac0,#7a3f88 70%)' },
+  { name: 'O Ninho Verde', sub: 'Um Novo Lar', art: 'radial-gradient(circle at 40% 35%,#c9e07a,#4b7a2a 70%)' },
+  { name: 'Juntos Sempre', sub: 'Final', art: 'radial-gradient(circle at 40% 35%,#ffcf8a,#b4582e 70%)' },
+];
+export const READY_PHASES = 2;
 
 export interface UIHandlers {
-  newGame(): void; continueGame(): void; resume(): void; toMenu(): void; freeRoam(): void;
+  newGame(level: number): void; continueGame(): void; resume(): void; toMenu(): void; freeRoam(): void; nextLevel(): void;
   settingsChanged(s: Settings): void; drawMap(c: HTMLCanvasElement): void; advanceDialogue(): void;
   closeSettings(): void; closeControls(): void;
 }
@@ -29,7 +42,10 @@ export class UI {
   onBlip: () => void = () => {};
 
   constructor(private h: UIHandlers, private settings: () => Settings) {
-    $('btn-new').onclick = () => h.newGame();
+    $('btn-new').onclick = () => h.newGame(1);
+    $('btn-credits').onclick = () => this.showScreen('credits');
+    $('credits-close').onclick = () => this.showScreen('menu');
+    $('complete-next').onclick = () => h.nextLevel();
     $('btn-continue').onclick = () => h.continueGame();
     $('btn-settings').onclick = () => { this.showScreen('settings'); this.buildSettings(); };
     $('btn-controls').onclick = () => { this.showScreen('controls'); this.buildControls(); };
@@ -75,8 +91,31 @@ export class UI {
     if (progress) $('obj-bar').style.width = `${(progress.n / progress.of) * 100}%`;
   }
   setItems(inv: Inventory): void {
-    $('items').innerHTML = inv.entries().map(([id, n]) => `<span title="${ITEM_INFO[id].name}">${ITEM_INFO[id].icon} ${n}</span>`).join('') || '<span style="opacity:.6">Sem itens</span>';
+    const list = inv.entries();
+    const shown: [ItemId, number][] = list.length ? list : [['dew', 0], ['seed', 0]];
+    $('items').innerHTML = shown.map(([id, n]) => `<span class="slot" title="${ITEM_INFO[id].name}"><i class="ic" style="background:${ITEM_INFO[id].art}"></i>${n}</span>`).join('');
   }
+  private lastHearts = '';
+  setHearts(n: number, max: number): void {
+    const key = `${n}/${max}`; if (key === this.lastHearts) return; this.lastHearts = key;
+    let h = '';
+    for (let i = 0; i < max; i++) h += `<svg viewBox="0 0 24 22" role="img" aria-label="Coração ${i + 1}"><path d="M12 21C5 15 1 11.5 1 7.2 1 4 3.5 1.5 6.6 1.5c2 0 3.9 1 5.4 3 1.5-2 3.4-3 5.4-3C20.5 1.5 23 4 23 7.2 23 11.5 19 15 12 21Z" fill="${i < n ? '#e53550' : '#3a3a3a'}" stroke="#fff" stroke-width="1.5"/></svg>`;
+    $('hearts').innerHTML = h;
+  }
+  /** Faixa de seleção de fases (arte de referência). */
+  buildLevels(unlocked: number, current: number): void {
+    $('levels-row').innerHTML = '';
+    PHASES.forEach((p, i) => {
+      const n = i + 1, ok = n <= Math.min(unlocked, READY_PHASES);
+      const b = document.createElement('button');
+      b.className = `phase${ok ? '' : ' locked'}${n === current ? ' cur' : ''}`;
+      b.disabled = !ok; b.setAttribute('aria-label', `Fase ${n}: ${p.name}${ok ? '' : ' (bloqueada)'}`);
+      b.innerHTML = `<span class="disc" style="background:${p.art}">${ok ? '' : '<i class="lock">🔒</i>'}</span><b>${n}. ${p.name}</b><span>${n > READY_PHASES ? 'Em breve' : p.sub}</span>`;
+      if (ok) b.onclick = () => this.h.newGame(n);
+      $('levels-row').appendChild(b);
+    });
+  }
+
   toast(text: string, ms = 2600): void {
     const t = $('toast'); t.textContent = text; t.classList.remove('hidden');
     clearTimeout(this.toastTimer); this.toastTimer = window.setTimeout(() => t.classList.add('hidden'), ms);
@@ -123,7 +162,10 @@ export class UI {
     const body = $('pause-body');
     if (tab === 'inv') {
       const inv = this.inventoryRef;
-      body.innerHTML = '<h3>Inventário</h3>' + (inv && inv.entries().length ? inv.entries().map(([id, n]) => `<div class="row"><span>${ITEM_INFO[id].icon} ${ITEM_INFO[id].name}</span><b>${n}</b></div>`).join('') : '<p>Você ainda não coletou nada.</p>');
+      body.innerHTML = '<h3>Itens colecionáveis</h3><div class="collect">' + ITEM_ORDER.map((id) => {
+        const n = inv?.count(id) ?? 0, it = ITEM_INFO[id];
+        return `<div class="citem${n ? '' : ' zero'}"><i class="ic" style="background:${it.art}"></i><div><b>${it.plural}</b><small>${it.use}</small><em>${n}</em></div></div>`;
+      }).join('') + '</div>';
     } else if (tab === 'journal') {
       const q = this.questsRef;
       body.innerHTML = '<h3>Diário de missões</h3>' + (q ? q.all().map((d) => {
@@ -189,9 +231,12 @@ export class UI {
       </table>`;
   }
 
-  complete(stats: { time: string; dew: number; dewTotal: number; seeds: number; seedsTotal: number }): void {
-    $('complete-text').textContent = 'Marieta atravessou o Jardim das Gotas e encontrou um abrigo seguro. Ao longe, entre as folhas, algo brilha em verde-esmeralda… A jornada está só começando.';
-    $('complete-stats').innerHTML = `⏱ Tempo: ${stats.time}<br>💧 Gotas: ${stats.dew}/${stats.dewTotal}<br>🌱 Sementes: ${stats.seeds}/${stats.seedsTotal}<br><small>Próxima fase: O Tronco dos Segredos — em desenvolvimento.</small>`;
+  complete(d: { title: string; text: string; stats: string; next: boolean; final: boolean }): void {
+    $('complete-title').textContent = d.title;
+    $('complete-text').textContent = d.text;
+    $('complete-stats').innerHTML = d.stats;
+    $('complete-next').classList.toggle('hidden', !d.next);
+    document.querySelector('#complete .sheet')?.classList.toggle('victory', d.final);
     this.showScreen('complete');
   }
 }

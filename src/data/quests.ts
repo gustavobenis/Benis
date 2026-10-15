@@ -22,3 +22,25 @@ export const LEVEL1_QUESTS: QuestDef[] = [
     ],
   },
 ];
+
+/** Missões da Fase 2 — O Rio (Novos Amigos). */
+export const LEVEL2_QUESTS: QuestDef[] = [
+  {
+    id: 'rio',
+    title: 'Atravessar o rio',
+    objectives: [
+      { id: 'lino', text: 'Converse com Lino, a formiga', type: 'talk', target: 'lino' },
+      { id: 'folhas', text: 'Colete folhas especiais para a ponte', type: 'collect', target: 'leaf', count: 3 },
+      { id: 'ponte', text: 'Construa a ponte no rio com Lino', type: 'interact', target: 'bridge' },
+      { id: 'margem', text: 'Atravesse até a outra margem', type: 'reach', target: 'north' },
+      { id: 'luna', text: 'Converse com Luna, a borboleta', type: 'talk', target: 'luna' },
+      { id: 'beto', text: 'Encontre Beto, o besouro', type: 'talk', target: 'beto' },
+    ],
+  },
+  {
+    id: 'tesouros',
+    title: 'Tesouros do rio',
+    optional: true,
+    objectives: [{ id: 'cristais', text: 'Encontre os cristais naturais do rio', type: 'collect', target: 'crystal', count: 2 }],
+  },
+];

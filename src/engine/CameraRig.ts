@@ -24,7 +24,7 @@ export class CameraRig {
   distanceScale = 1;
   reduceMotion = false;
 
-  constructor(scene: Scene, private world: CollisionWorld) {
+  constructor(scene: Scene, public world: CollisionWorld) {
     this.camera = new FreeCamera('cam', new Vector3(0, 4, -10), scene);
     this.camera.minZ = 0.05;
     this.camera.maxZ = 600;

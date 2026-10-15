@@ -137,6 +137,69 @@ await tp(0, 0, 90);
 ok(await waitState('complete'), 'chegar ao abrigo conclui a fase');
 await page.screenshot({ path: OUT + '10-conclusao.png' });
 
+console.log('7. Fase 2 — O Rio');
+ok(await page.isVisible('#complete-next'), 'tela de conclusão oferece a próxima fase');
+await page.click('#complete-next');
+ok(await waitState('playing'), 'Próxima fase inicia a Fase 2');
+ok((await G('g.level.info.id')) === 2, 'Fase 2 carregada');
+ok((await G('g.hearts')) === 3, 'começa com 3 corações');
+await prep();
+const talk = async (x, z) => {
+  await tp(x, 0, z);
+  await until("!document.getElementById('prompt').classList.contains('hidden')");
+  await page.keyboard.press('e');
+  ok(await waitState('dialogue'), `diálogo inicia em (${x}, ${z})`);
+  for (let i = 0; i < 14 && (await state()) === 'dialogue'; i++) { await page.keyboard.press('e'); await sleep(120); await page.keyboard.press('e'); await sleep(120); }
+  await waitState('playing');
+};
+await talk(10, -13);
+ok((await G("g.quests.currentObjective('rio').id")) === 'folhas', 'Lino pede folhas especiais');
+await page.screenshot({ path: OUT + '11-fase2-lino.png' });
+const leaves = await G("g.level.pickups.filter(p => p.def.kind === 'leaf').slice(0, 3).map(p => [p.def.x, p.def.y, p.def.z])");
+for (let i = 0; i < leaves.length; i++) { const [x, y, z] = leaves[i]; await tp(x, y, z); await until(`g.inventory.count('leaf') >= ${i + 1}`, 8000); }
+ok((await G("g.inventory.count('leaf')")) === 3, 'coletou 3 folhas especiais');
+ok((await G("g.quests.currentObjective('rio').id")) === 'ponte', 'objetivo: construir a ponte');
+// Sem ponte: a água arrasta (correnteza) — travessia pela água
+await tp(0, 0, -11); await until("!document.getElementById('prompt').classList.contains('hidden')");
+await page.keyboard.press('e');
+ok(await until('g.level.bridgeBuilt'), 'ponte construída com as folhas');
+ok((await G("g.inventory.count('leaf')")) === 0, 'folhas consumidas');
+await sleep(2500);
+await page.screenshot({ path: OUT + '12-fase2-ponte.png' });
+// Travessia a pé pela ponte, com entrada real do teclado
+await tp(0, 0, -14);
+await page.keyboard.down('Shift'); await page.keyboard.down('w');
+ok(await until('g.body.z > 31', 60000), 'atravessa a ponte a pé (colisor da ponte sustenta Marieta)');
+await page.keyboard.up('w'); await page.keyboard.up('Shift');
+ok((await G('g.body.y')) < 1.5 && (await G('g.hearts')) === 3, 'chegou à outra margem sem se machucar');
+await until("g.quests.currentObjective('rio')?.id === 'luna'", 8000);
+ok((await G("g.quests.currentObjective('rio').id")) === 'luna', 'objetivo: falar com Luna');
+await talk(-8, 38);
+ok((await G("g.quests.currentObjective('rio').id")) === 'beto', 'objetivo: encontrar Beto');
+await page.screenshot({ path: OUT + '13-fase2-luna.png' });
+await talk(12, 43);
+ok(await waitState('complete'), 'encontrar Beto conclui a Fase 2');
+await page.screenshot({ path: OUT + '14-fase2-vitoria.png' });
+ok(!(await page.isVisible('#complete-next')), 'Fase 2 é a última disponível: sem botão de próxima fase');
+
+console.log('8. Rio: correnteza, resgate e coração');
+await page.click('#complete-menu');
+ok(await waitState('menu'), 'volta ao menu');
+ok((await page.locator('.phase:not(.locked)').count()) === 2, 'seleção de fases mostra 2 fases liberadas');
+page.once('dialog', (d) => d.accept());
+await page.locator('.phase').nth(1).click();
+ok(await waitState('playing'), 'iniciar a Fase 2 pela seleção');
+await prep();
+await tp(0, 0, 10);
+ok(await waitState('dialogue', 30000), 'primeira queda no rio: Beto resgata Marieta (diálogo)');
+ok(Math.hypot((await G('g.body.x')) - 9, (await G('g.body.z')) - 42) < 3, 'resgatada na outra margem, perto do Beto');
+ok((await G('g.hearts')) === 3, 'o resgate não custa coração');
+for (let i = 0; i < 14 && (await state()) === 'dialogue'; i++) { await page.keyboard.press('e'); await sleep(120); await page.keyboard.press('e'); await sleep(120); }
+await waitState('playing');
+await page.screenshot({ path: OUT + '15-fase2-resgate.png' });
+await tp(0, 0, 10);
+ok(await until('g.hearts === 2', 30000), 'segunda vez na água: a correnteza leva e custa um coração');
+
 ok(errors.filter((e) => !/GPU stall|ReadPixels|WebGL: INVALID|swiftshader/i.test(e)).length === 0, `sem erros de console (${errors.length ? errors.slice(0, 3).join(' | ') : 'ok'})`);
 await browser.close();
 console.log(failed ? `\n${failed} verificação(ões) falharam.` : '\nTodas as verificações passaram.');

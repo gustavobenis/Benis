@@ -3,7 +3,7 @@
 Aventura 3D de navegador protagonizada por **Marieta**, uma joaninha que atravessa a mata na escala de um inseto.
 Stack: **Babylon.js + TypeScript + Vite** (sem servidor; progresso salvo localmente em IndexedDB).
 
-> **Estado atual: protótipo jogável da Fase 1 — O Jardim das Gotas.** As Fases 2–8 ainda não existem.
+> **Estado atual: protótipo jogável das Fases 1 (O Jardim) e 2 (O Rio — Novos Amigos).** As Fases 3–8 ainda não existem.
 > Veja [o que está e o que não está pronto](#estado-do-projeto).
 
 ## Rodar no computador (Windows, macOS, Linux)
@@ -58,6 +58,11 @@ Abra com `/?debug` para expor `window.__marieta` (usado pelos testes).
 | Toque | Joystick à esquerda, arrastar à direita = câmera, botões Pular / Agir / Observar |
 | Controle (Gamepad API) | Analógicos, A pula, X age, Y câmera, LB observa, Start pausa |
 
+**Fase 2 — O Rio:** converse com Lino (formiga) → colete 3 folhas especiais → construa a ponte → atravesse e fale com Luna
+(borboleta) → encontre Beto (besouro). A água arrasta: depois de ~2 s Marieta é levada pela correnteza (a primeira vez, Beto a
+resgata; depois custa um coração). Dá para cruzar sem ponte por pedras (precisão) ou folhas flutuantes (móveis).
+**Vida:** 3 corações; o pássaro e a correnteza tiram um, gotas de orvalho devolvem um. Sem game over.
+
 **Fase 1:** converse com Tito → colete 5 gotas de orvalho → molhe a folha-portão → chegue ao abrigo.
 Opcional: 3 sementes escondidas. Cuidado com a **sombra do pássaro**: esconda-se sob folhas/cogumelos.
 
@@ -70,10 +75,12 @@ Opcional: 3 sementes escondidas. Cuidado com a **sombra do pássaro**: esconda-s
 | Câmeras 1ª / 3ª pessoa / orbital, troca sem teleporte | ✅ testado |
 | Controles teclado+mouse, toque, gamepad | ✅ teclado/mouse/toque testados; **gamepad implementado mas não testado com hardware** |
 | Missões, diálogos, coleta, checkpoints, salvamento | ✅ testado |
-| Perigo (sombra do pássaro), respawn | ✅ testado |
+| Perigo (sombra do pássaro), correnteza, plataformas móveis, corações, respawn | ✅ testado |
+| Fase 2 (rio, Lino, Luna, Beto, ponte, 6 tipos de colecionáveis) | ✅ jogável de ponta a ponta (e2e) |
+| Interface conforme a arte de referência (HUD, minimapa circular, seleção de fases, coleção, vitória) | ✅ implementada a partir do design no Claude Design; **não é pixel-idêntica** à imagem |
 | Áudio procedural (vento, pássaros, passos, música generativa, 3D espacial) | ⚠️ implementado; **não auditado auditivamente** (ambiente de teste sem áudio) |
 | Qualidade gráfica auto/eco/equilibrada/alta | ⚠️ implementada; **FPS real não medido** (só havia GPU por software) |
-| Fase 2–8, Bento, Nina, Pipo, Dário, romance | ❌ não iniciado |
+| Fases 3–8, demais amigos (Tico, Dona Olívia, Zuzu, Freddy, Rita, Sr. Caramujo), Dário, romance | ❌ não iniciado |
 | Modelos Blender/GLB, animações autorais, gravações de áudio | ❌ arte atual é procedural (placeholder de qualidade de protótipo) |
 | Testes em iPhone/Safari e Android reais | ❌ pendente |
 

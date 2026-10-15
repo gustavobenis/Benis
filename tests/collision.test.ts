@@ -84,3 +84,30 @@ describe('CollisionWorld', () => {
     expect(w.cameraClip([0, 1, -10], [0, 1, 10])).toBeLessThanOrEqual(1);
   });
 });
+
+describe('Água e plataformas móveis', () => {
+  it('a correnteza arrasta quem está na água e não quem está sobre uma pedra', () => {
+    const w = new CollisionWorld();
+    w.waters.push({ minX: -50, maxX: 50, minZ: 0, maxZ: 20, flowX: 4, flowZ: 0 });
+    w.add({ kind: 'cyl', x: 10, z: 10, r: 2, yBase: 0, yTop: 0.9, surface: 'stone' });
+    const a = createBody(0, 0, 10), c = createBody(10, 0.9, 10);
+    c.grounded = true;
+    sim(w, a, 1, 0, 0); sim(w, c, 1, 0, 0);
+    expect(a.inWater).toBe(true);
+    expect(a.x).toBeGreaterThan(3);
+    expect(c.inWater).toBe(false);
+    expect(Math.abs(c.x - 10)).toBeLessThan(0.1);
+  });
+
+  it('plataforma móvel carrega quem está em cima', () => {
+    const w = new CollisionWorld();
+    const mv = { ax: 6, az: 0, speed: 1, phase: 0, cx: 0, cz: 0, dx: 0, dz: 0 };
+    w.add({ kind: 'box', x: 0, z: 0, hx: 3, hz: 3, yBase: 0.1, yTop: 0.5, yaw: 0, surface: 'leaf', move: mv });
+    const b = createBody(0, 0.5, 0);
+    b.grounded = true;
+    let t = 0;
+    for (let i = 0; i < 90; i++) { t += 1 / 60; w.updateMovers(t); w.step(b, 1 / 60, 0, 0, OPTS); }
+    expect(b.x).toBeGreaterThan(3);              // acompanhou a folha (~6·sin(1.5) ≈ 6)
+    expect(b.y).toBeCloseTo(0.5, 2);
+  });
+});

@@ -43,7 +43,7 @@ void main() {
   gl_FragColor = vec4(mix(c, fogColor, clamp(f, 0.0, 1.0)), 1.0);
 }`;
 
-export interface GrassOptions { max: number; bounds: [number, number, number, number]; safe: { x: number; z: number; r: number }[]; wallZ: number }
+export interface GrassOptions { avoid?: (x: number, z: number) => boolean; max: number; bounds: [number, number, number, number]; safe: { x: number; z: number; r: number }[]; wallZ: number }
 
 /** Relva instanciada com balanço pelo vento (shader próprio). */
 export class Grass {
@@ -95,6 +95,7 @@ export class Grass {
       if (edge < 9 || nearWall) tall = 1; else if (r() < 0.06) tall = 0.35;
       // densidade: muito mais lâminas nas bordas
       if (tall === 0 && r() < 0.25) continue;
+      if (opt.avoid?.(x, z)) continue;
       if (opt.safe.some((s) => Math.hypot(x - s.x, z - s.z) < s.r)) continue;
       if (world.shapes.some((s) => (s.kind === 'cyl' ? Math.hypot(x - s.x, z - s.z) < s.r + 0.4 : Math.hypot(x - s.x, z - s.z) < Math.max(s.hx, s.hz) + 0.4) && s.yBase < 1)) continue;
       // Perto da muralha da folha-portão só no corredor central não aparece (hedge denso nos lados)

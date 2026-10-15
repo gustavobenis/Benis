@@ -2,7 +2,7 @@ import {
   Color3, Color4, DefaultRenderingPipeline, DirectionalLight, DynamicTexture, HemisphericLight, MeshBuilder, ParticleSystem, ReflectionProbe,
   RenderTargetTexture, Scene, ShadowGenerator, StandardMaterial, Texture, Vector3,
 } from '@babylonjs/core';
-import type { AbstractMesh, Camera, Mesh } from '@babylonjs/core';
+import type { Camera, Mesh } from '@babylonjs/core';
 import type { QualityProfile } from '../engine/Quality';
 
 /** Céu, luz solar, sombras, névoa, partículas atmosféricas e pós-processamento. */
@@ -15,6 +15,8 @@ export class Environment {
   private pipeline: DefaultRenderingPipeline | null = null;
   private probe!: ReflectionProbe;
   private shafts: StandardMaterial[] = [];
+  private shaftMeshes: Mesh[] = [];
+  private shaftTex!: DynamicTexture;
   private dir = new Vector3(-0.45, -0.72, 0.5).normalize();
   private t = 0;
 
@@ -70,15 +72,15 @@ export class Environment {
     ps.minEmitPower = 0.2; ps.maxEmitPower = 0.7; ps.gravity = new Vector3(0.1, 0.02, 0.05);
     ps.blendMode = ParticleSystem.BLENDMODE_ADD; ps.start();
     this.pollen = ps;
-    this.buildShafts();
+    this.buildProbe();
   }
 
-  /** Probe de reflexo para brilho das carapaças e gotas (IBL procedural). Chamar após construir o nível. */
-  buildProbe(renderList: AbstractMesh[]): void {
+  /** Probe de reflexo (só o céu) para brilho das carapaças e gotas: IBL procedural. */
+  private buildProbe(): void {
     this.probe = new ReflectionProbe('probe', 128, this.scene);
-    this.probe.renderList!.push(this.sky, ...renderList);
+    this.probe.renderList!.push(this.sky);
     this.probe.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
-    this.probe.position.set(0, 3, -90);
+    this.probe.position.set(0, 3, 0);
     // Só liga como ambiente depois do primeiro render do cubo: evita "feedback loop" (ler e escrever a mesma textura).
     const cube = this.probe.cubeTexture;
     cube.onAfterRenderObservable.addOnce(() => {
@@ -87,25 +89,35 @@ export class Environment {
     });
   }
 
-  private buildShafts(): void {
-    const tex = new DynamicTexture('shaft', { width: 64, height: 256 }, this.scene, false);
-    const c = tex.getContext() as CanvasRenderingContext2D;
-    const g = c.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, 'rgba(255,240,190,0.9)'); g.addColorStop(1, 'rgba(255,240,190,0)');
-    c.fillStyle = g; c.fillRect(0, 0, 64, 256);
-    const h = c.createLinearGradient(0, 0, 64, 0); h.addColorStop(0, 'rgba(0,0,0,1)'); h.addColorStop(0.5, 'rgba(0,0,0,0)'); h.addColorStop(1, 'rgba(0,0,0,1)');
-    c.globalCompositeOperation = 'destination-out'; c.fillStyle = h; c.fillRect(0, 0, 64, 256); tex.update();
-    const spots: [number, number, number][] = [[-6, -80, 0], [14, -62, 1], [-12, -38, 2], [8, 20, 3], [-2, 62, 4], [10, 86, 5]];
-    for (const [x, z, i] of spots) {
+  /** Névoa e cor de fundo de cada fase. */
+  setAtmosphere(color: [number, number, number], density: number): void {
+    this.scene.fogColor = new Color3(...color);
+    this.scene.fogDensity = density;
+    this.scene.clearColor = new Color4(color[0], color[1], color[2], 1);
+  }
+
+  /** Feixes de luz de cada fase. */
+  setShafts(spots: [number, number][]): void {
+    for (const m of this.shaftMeshes) m.dispose(false, true);
+    this.shaftMeshes = []; this.shafts = [];
+    if (!this.shaftTex) {
+      const tex = new DynamicTexture('shaft', { width: 64, height: 256 }, this.scene, false);
+      const c = tex.getContext() as CanvasRenderingContext2D;
+      const g = c.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, 'rgba(255,240,190,0.9)'); g.addColorStop(1, 'rgba(255,240,190,0)');
+      c.fillStyle = g; c.fillRect(0, 0, 64, 256);
+      const h = c.createLinearGradient(0, 0, 64, 0); h.addColorStop(0, 'rgba(0,0,0,1)'); h.addColorStop(0.5, 'rgba(0,0,0,0)'); h.addColorStop(1, 'rgba(0,0,0,1)');
+      c.globalCompositeOperation = 'destination-out'; c.fillStyle = h; c.fillRect(0, 0, 64, 256); tex.update();
+      this.shaftTex = tex;
+    }
+    spots.forEach(([x, z], i) => {
       const m = new StandardMaterial('shaftM' + i, this.scene);
-      m.emissiveColor = new Color3(1, 0.93, 0.7); m.opacityTexture = tex; m.disableLighting = true; m.backFaceCulling = false;
+      m.emissiveColor = new Color3(1, 0.93, 0.7); m.opacityTexture = this.shaftTex; m.disableLighting = true; m.backFaceCulling = false;
       m.alpha = 0.16; m.alphaMode = 1; m.fogEnabled = false;
       const p = MeshBuilder.CreatePlane('shaft', { width: 7, height: 46 }, this.scene);
-      p.material = m; p.isPickable = false;
-      p.position.set(x, 22, z);
-      p.rotation.set(Math.atan2(-this.dir.z, 1) * 0.9, Math.atan2(this.dir.x, this.dir.z) + 0.3 * i, 0.5);
-      p.rotation.x = 0.45; p.rotation.z = 0.35; p.rotation.y = i * 1.1;
-      this.shafts.push(m);
-    }
+      p.material = m; p.isPickable = false; p.position.set(x, 22, z);
+      p.rotation.set(0.45, i * 1.1, 0.35);
+      this.shafts.push(m); this.shaftMeshes.push(p);
+    });
   }
 
   applyQuality(q: QualityProfile, engineScale: (n: number) => void): void {

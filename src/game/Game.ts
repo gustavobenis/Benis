@@ -4,10 +4,12 @@ import { Input, type InputFrame } from '../engine/Input';
 import { CameraRig, CAMERA_LABEL } from '../engine/CameraRig';
 import { GameAudio } from '../engine/Audio';
 import { AutoQuality, PROFILES, resolveLevel, type QualityLevel } from '../engine/Quality';
-import { createBody, type Body } from '../physics/CollisionWorld';
+import { CollisionWorld, createBody, type Body } from '../physics/CollisionWorld';
 import { Environment } from '../levels/Environment';
+import { LevelBase, type LevelHost } from '../levels/LevelBase';
 import { Level1 } from '../levels/Level1';
-import * as D from '../levels/level1Data';
+import { Materials } from '../levels/Materials';
+import { Level2 } from '../levels/Level2';
 import { MarietaModel } from '../player/Marieta';
 import { BirdShadow } from './BirdShadow';
 import { QuestLog, type QuestNotice } from '../systems/Quests';
@@ -15,75 +17,85 @@ import { Inventory, ITEM_INFO, type ItemId } from '../systems/Inventory';
 import { DialogueRunner } from '../systems/Dialogue';
 import { SaveManager, type SaveData } from '../systems/Save';
 import { DEFAULT_SETTINGS, type Settings } from '../systems/Settings';
-import { LEVEL1_QUESTS } from '../data/quests';
-import { pickDialogue } from '../data/dialogues';
-import { UI } from '../ui/UI';
+import { UI, READY_PHASES } from '../ui/UI';
 import { drawMap } from '../ui/MiniMap';
 
 type State = 'loading' | 'menu' | 'playing' | 'dialogue' | 'paused' | 'complete';
 
 const WALK = 4.8, RUN = 8.6, JUMP = 10.5, CLIMB = 3.6;
-const DEW_TOTAL = D.PICKUPS.filter((p) => p.kind === 'dew').length;
-const SEED_TOTAL = D.PICKUPS.filter((p) => p.kind === 'seed').length;
+const MAX_HEARTS = 3;
+/** Segundos na água até a correnteza arrastar Marieta. */
+const WATER_LIMIT = 2.2;
 
-/** Orquestra o jogo: cena, sistemas, estados e laço principal. */
+const LEVELS: Record<number, (scene: Scene, grass: number) => LevelBase> = {
+  1: (s, g) => new Level1(s, g),
+  2: (s, g) => new Level2(s, g),
+};
+
+/** Orquestra o jogo: cena, fases, sistemas, estados e laço principal. */
 export class Game {
   state: State = 'loading';
   settings: Settings = { ...DEFAULT_SETTINGS };
   readonly engine: Engine; readonly scene: Scene;
-  private env!: Environment; private level!: Level1; private rig!: CameraRig; private input!: Input;
+  private env!: Environment; level!: LevelBase; private rig!: CameraRig; private input!: Input;
   private audio = new GameAudio(); private ui!: UI; private save = new SaveManager();
-  readonly quests = new QuestLog(LEVEL1_QUESTS); readonly inventory = new Inventory(); private dialogue = new DialogueRunner();
+  quests = new QuestLog([]); readonly inventory = new Inventory(); private dialogue = new DialogueRunner();
   private model!: MarietaModel; private blob!: Mesh; private bird!: BirdShadow;
   /** Corpo físico de Marieta (exposto para depuração/testes). */
-  body: Body = createBody(D.START.x, D.START.y, D.START.z);
+  body: Body = createBody(0, 0, 0);
   private heading = 0; private flags = new Set<string>(); private collected = new Set<string>();
-  private checkpoint = { id: 'cp0', x: D.START.x, y: 0, z: D.START.z };
-  private observing = false; private playTime = 0; private glideEnergy = 1; private stepDist = 0;
+  private checkpoint = { id: 'cp0', x: 0, y: 0, z: 0 };
+  hearts = MAX_HEARTS;
+  private observing = false; private playTime = 0; private glideEnergy = 1; private stepDist = 0; private waterTime = 0;
   private jumpBuffer = 0; private coyote = 0; private hudAcc = 0; private saveTimer = 0; private saveDirty = false;
   private hintShown = new Set<string>();
   private quality!: QualityLevel; private auto: AutoQuality | null = null;
-  private hasSave = false; private menuYaw = 0; private tick = 0;
+  private hasSave = false; private menuYaw = 0; private unlocked = 1;
   private gliding = false; private lastSpeed = 0;
+
+  /** Visão que as fases têm do jogo. */
+  private host: LevelHost;
 
   constructor(private canvas: HTMLCanvasElement) {
     this.engine = new Engine(canvas, true, { powerPreference: 'high-performance', stencil: true, preserveDrawingBuffer: false }, true);
     this.scene = new Scene(this.engine);
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const g = this;
+    this.host = {
+      get inventory() { return g.inventory; }, get quests() { return g.quests; }, get flags() { return g.flags; }, get audio() { return g.audio; },
+      toast: (t, ms) => this.ui.toast(t, ms), changed: () => { this.queueSave(); this.refreshHud(); },
+    };
   }
 
   /** Inicializa tudo; reporta progresso à tela de carregamento. */
   async init(): Promise<void> {
     const step = (p: number) => this.ui?.setLoading(p);
     this.ui = new UI({
-      newGame: () => void this.startNew(), continueGame: () => void this.continueGame(), resume: () => (this.state === 'playing' ? this.pause() : this.resume()),
+      newGame: (n) => void this.startNew(n), continueGame: () => void this.continueGame(), resume: () => (this.state === 'playing' ? this.pause() : this.resume()),
       toMenu: () => this.toMenu(), freeRoam: () => { this.ui.showScreen(null); this.state = 'playing'; this.input.enabled = true; this.afterStart(); },
+      nextLevel: () => void this.startNew(this.level.info.id + 1, true),
       settingsChanged: (s) => this.applySettings(s, true), drawMap: (c) => this.paintMap(c), advanceDialogue: () => this.advanceDialogue(),
       closeSettings: () => this.ui.showScreen(this.state === 'paused' ? 'pause' : 'menu'),
       closeControls: () => this.ui.showScreen(this.state === 'paused' ? 'pause' : 'menu'),
     }, () => this.settings);
-    this.ui.inventoryRef = this.inventory; this.ui.questsRef = this.quests; this.ui.onBlip = () => this.audio.blip();
+    this.ui.inventoryRef = this.inventory; this.ui.onBlip = () => this.audio.blip();
     step(0.05);
     this.settings = await this.save.loadSettings();
+    this.unlocked = (await this.save.loadMeta().catch(() => ({ unlocked: 1 }))).unlocked;
     this.ui.applyScale();
     const saved = await this.save.loadGame().catch(() => null);
     this.hasSave = !!saved; this.ui.enableContinue(this.hasSave);
     step(0.15);
 
     this.quality = resolveLevel(this.settings.quality);
-    const prof = PROFILES[this.quality];
-    this.level = new Level1(this.scene, PROFILES.high.grass);
-    step(0.55);
-    this.rig = new CameraRig(this.scene, this.level.world);
+    this.rig = new CameraRig(this.scene, new CollisionWorld());
     this.env = new Environment(this.scene, this.rig.camera);
-    this.level.grass.setFog(this.scene.fogColor, this.scene.fogDensity);
-    for (const m of this.level.casters) this.env.shadows.addShadowCaster(m);
-    for (const m of this.level.receivers) m.receiveShadows = true;
-    this.model = new MarietaModel(this.scene, this.level.mats);
-    for (const m of this.model.meshes) this.env.shadows.addShadowCaster(m);
+    step(0.3);
+    // Modelos persistentes (criados antes de qualquer fase para não serem descartados com ela)
+    this.model = new MarietaModel(this.scene, new Materials(this.scene));
     this.blob = this.makeBlob();
     this.bird = new BirdShadow(this.scene);
-    this.env.buildProbe([...this.level.reflectionList]);
-    step(0.8);
+    step(0.5);
 
     this.input = new Input(this.canvas, {
       sensitivity: () => this.settings.sensitivity, invertY: () => this.settings.invertY,
@@ -93,8 +105,8 @@ export class Game {
     this.input.bindTouch(this.ui.touchElements());
     if (matchMedia('(pointer: coarse)').matches) { this.input.usingTouch = true; }
 
-    this.quests.onNotice((n) => this.onQuestNotice(n));
-    this.applyQuality(this.quality);
+    this.loadLevel(saved && saved.level in LEVELS ? saved.level : 1);
+    step(0.9);
     this.applySettings(this.settings, false);
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) { this.audio.suspend(); if (this.state === 'playing') this.pause(); } else if (this.state === 'playing') this.audio.resume();
@@ -102,18 +114,42 @@ export class Game {
     window.addEventListener('resize', () => this.engine.resize());
     window.addEventListener('beforeunload', () => { if (this.state === 'playing') void this.flushSave(); });
 
-    this.placePlayer(D.START.x, 0, D.START.z, true);
     this.scene.onBeforeRenderObservable.add(() => this.frame());
     this.engine.runRenderLoop(() => this.scene.render());
-    void prof;
     step(1);
     this.toMenu(true);
   }
 
+  /* ---------- fases ---------- */
+  /** Descarta a fase atual (se houver) e constrói a fase `n`. */
+  loadLevel(n: number): void {
+    this.level?.dispose();
+    this.audio.clearSprings();
+    const level = LEVELS[n](this.scene, PROFILES.high.grass);
+    this.level = level;
+    this.rig.world = level.world;
+    this.quests = new QuestLog(level.info.quests);
+    this.quests.onNotice((q) => this.onQuestNotice(q));
+    this.ui.questsRef = this.quests;
+    this.env.setAtmosphere(level.info.fog.color, level.info.fog.density);
+    this.env.setShafts(level.info.shafts);
+    level.grass.setFog(this.scene.fogColor, this.scene.fogDensity);
+    this.model.root.position.set(level.info.start.x, 0, level.info.start.z);
+    this.flags.clear(); this.collected.clear(); this.inventory.load(undefined);
+    this.checkpoint = { id: 'cp0', x: level.info.start.x, y: 0, z: level.info.start.z };
+    this.bird.reset(); this.observing = false; this.env.setObserve(false);
+    this.applyQuality(this.quality);
+    this.addSprings();
+    this.placePlayer(level.info.start.x, 0, level.info.start.z, true);
+    this.ui.buildLevels(this.unlocked, n);
+  }
+
+  private addSprings(): void { for (const [x, y, z] of this.level.info.springs) this.audio.addSpring(x, y, z); }
+
   /* ---------- fluxo de jogo ---------- */
   private afterStart(): void {
     this.audio.init(); this.audio.apply(this.settings); this.audio.start();
-    this.audio.addSpring(D.SHELTER.x + 12, 0.5, D.SHELTER.z + 2);
+    if (!this.audio.hasSprings) this.addSprings();
     this.ui.setHud(true); this.ui.setTouch(this.input.usingTouch); this.input.enabled = true;
     this.ui.fade(false);
     if (!this.hintShown.has('controls')) {
@@ -123,14 +159,15 @@ export class Game {
     if (!this.input.usingTouch) this.canvas.focus();
   }
 
-  private async startNew(): Promise<void> {
-    if (this.hasSave && !window.confirm('Começar um novo jogo apaga o progresso salvo. Continuar?')) return;
+  /** Começa uma partida nova na fase `n` (apaga o jogo salvo). */
+  private async startNew(n: number, fromComplete = false): Promise<void> {
+    if (!LEVELS[n]) return;
+    if (!fromComplete && this.hasSave && !window.confirm('Começar uma nova partida apaga o progresso salvo. Continuar?')) return;
     this.audio.init();
     await this.save.deleteGame().catch(() => {});
-    this.quests.reset(); this.inventory.load(undefined); this.flags.clear(); this.collected.clear();
-    this.checkpoint = { id: 'cp0', x: D.START.x, y: 0, z: D.START.z };
-    this.playTime = 0; this.hintShown.clear(); this.resetLevel();
-    this.placePlayer(D.START.x, 0, D.START.z, true);
+    if (this.level.info.id !== n || this.state !== 'menu') this.loadLevel(n);
+    else this.resetLevel();
+    this.playTime = 0; this.hintShown.clear(); this.hearts = MAX_HEARTS;
     this.rig.yaw = 0; this.rig.pitch = 0.4; this.rig.setMode('third');
     this.quests.announceActive();
     this.begin();
@@ -139,33 +176,37 @@ export class Game {
   private async continueGame(): Promise<void> {
     this.audio.init();
     const s = await this.save.loadGame();
-    if (!s) { this.ui.toast('Nenhum jogo salvo encontrado.'); return; }
+    if (!s || !LEVELS[s.level]) { this.ui.toast('Nenhum jogo salvo encontrado.'); return; }
+    if (this.level.info.id !== s.level) this.loadLevel(s.level); else this.resetLevel();
     this.applySave(s); this.begin();
   }
 
   private applySave(s: SaveData): void {
-    this.resetLevel();
     this.quests.load(s.quests); this.inventory.load(s.inventory);
     this.flags = new Set(s.flags); this.collected = new Set(s.collected); this.playTime = s.playTime;
     this.checkpoint = { ...s.checkpoint };
     this.level.setCollected(s.collected);
-    if (this.flags.has('gate')) this.level.openGate(true);
+    this.level.applyFlags(this.flags);
+    this.hearts = MAX_HEARTS;
     this.placePlayer(s.checkpoint.x, s.checkpoint.y, s.checkpoint.z, true);
     this.rig.yaw = 0; this.rig.pitch = 0.4;
   }
 
+  /** Volta o estado da fase atual ao início. */
   private resetLevel(): void {
-    // Recria somente o estado dinâmico: recoloca coletáveis e fecha o portão.
-    for (const p of this.level.pickups) { p.taken = false; p.node.setEnabled(true); }
-    if (this.level.gateOpen) this.level.reopenGate();
-    this.bird.reset(); this.observing = false; this.env.setObserve(false); this.glideEnergy = 1;
+    this.quests.reset(); this.inventory.load(undefined); this.flags.clear(); this.collected.clear();
+    this.level.resetState();
+    const st = this.level.info.start;
+    this.checkpoint = { id: 'cp0', x: st.x, y: 0, z: st.z };
+    this.placePlayer(st.x, 0, st.z, true);
+    this.bird.reset(); this.observing = false; this.env.setObserve(false); this.glideEnergy = 1; this.waterTime = 0;
   }
 
   private begin(): void {
     this.ui.showScreen(null);
     this.state = 'playing';
     this.afterStart();
-    this.refreshHud(true);
+    this.refreshHud();
     this.queueSave();
   }
 
@@ -187,23 +228,32 @@ export class Game {
     this.audio.setTension(0); this.audio.stop();
     this.observing = false; this.env.setObserve(false);
     void this.save.loadGame().then((s) => { this.hasSave = !!s; this.ui.enableContinue(this.hasSave); });
-    // Mostra Marieta na cena do menu: reposiciona no início
-    this.placePlayer(D.START.x, 0, D.START.z, true);
+    this.ui.buildLevels(this.unlocked, this.level.info.id);
+    const st = this.level.info.start;
+    this.placePlayer(st.x, 0, st.z, true);
     this.rig.setMode('orbital');
     this.ui.showScreen('menu');
   }
 
   private complete(): void {
+    const id = this.level.info.id;
     this.state = 'complete'; this.input.enabled = false; this.input.exitPointerLock();
-    this.flags.add('level1_done'); this.audio.complete(); this.audio.setTension(0);
+    this.flags.add(`done${id}`); this.audio.complete(); this.audio.setTension(0);
+    const hasNext = id < READY_PHASES;
+    if (this.unlocked < id + 1) { this.unlocked = Math.min(id + 1, READY_PHASES); void this.save.saveMeta({ unlocked: this.unlocked }); }
     const t = Math.floor(this.playTime), mm = Math.floor(t / 60), ss = String(t % 60).padStart(2, '0');
-    this.ui.complete({ time: `${mm}:${ss}`, dew: this.inventory.count('dew'), dewTotal: DEW_TOTAL, seeds: this.inventory.count('seed'), seedsTotal: SEED_TOTAL });
+    const tot = this.level.info.totals;
+    const stats = [`⏱ Tempo: ${mm}:${ss}`, ...(Object.keys(tot) as ItemId[]).map((k) => `${ITEM_INFO[k].plural}: ${this.countCollected(k)}/${tot[k]}`)].join('<br>');
+    this.ui.complete(hasNext
+      ? { title: id === 1 ? 'Jardim concluído!' : 'Fase concluída!', text: 'Marieta atravessou o Jardim das Gotas e encontrou um abrigo seguro. A grande aventura continua rio adiante…', stats: stats + '<br><small>Fase 2 liberada: O Rio</small>', next: true, final: false }
+      : { title: 'Obrigado por jogar!', text: 'Marieta e Beto se encontraram à beira do rio. A próxima parada é a Floresta (Fase 3, em desenvolvimento).', stats: stats + '<br><small>Fim da demo atual — as fases 3 a 8 virão em seguida.</small>', next: false, final: true });
     this.ui.setTouch(false); this.ui.prompt(null); void this.flushSave();
   }
+  private countCollected(kind: ItemId): number { return this.level.pickups.filter((p) => p.taken && p.def.kind === kind).length; }
 
   /* ---------- salvamento ---------- */
   private snapshot(): SaveData {
-    return { version: 1, savedAt: Date.now(), level: 1, checkpoint: { ...this.checkpoint }, quests: this.quests.serialize(), inventory: this.inventory.serialize(), collected: [...this.collected], flags: [...this.flags], playTime: this.playTime };
+    return { version: 1, savedAt: Date.now(), level: this.level.info.id, checkpoint: { ...this.checkpoint }, quests: this.quests.serialize(), inventory: this.inventory.serialize(), collected: [...this.collected], flags: [...this.flags], playTime: this.playTime };
   }
   private queueSave(): void { this.saveDirty = true; this.saveTimer = 0.6; }
   private async flushSave(): Promise<void> {
@@ -228,8 +278,9 @@ export class Game {
     const dpr = window.devicePixelRatio || 1;
     this.env.applyQuality(q, (n) => this.engine.setHardwareScalingLevel(n * (dpr > 2 ? dpr / 2 : 1)));
     this.level.grass.setCount(q.grass);
-    if (!q.shadows) this.env.shadows.getShadowMap()!.renderList = [];
-    else { const rl = this.env.shadows.getShadowMap()!.renderList!; rl.length = 0; rl.push(...this.level.casters, ...this.model.meshes); }
+    const map = this.env.shadows.getShadowMap()!;
+    const rl = map.renderList!; rl.length = 0;
+    if (q.shadows) rl.push(...this.level.casters, ...this.model.meshes);
     this.auto = this.settings.quality === 'auto' ? new AutoQuality(level, (l) => { console.info('[quality] ajustando para', l); this.applyQuality(l); if (this.auto) this.auto.level = l; }) : null;
   }
 
@@ -238,19 +289,39 @@ export class Game {
     if (n.kind === 'started') this.ui.toast(`${n.quest.optional ? 'Missão opcional' : 'Nova missão'}: ${n.quest.title}`);
     else if (n.kind === 'objective') { this.ui.toast(n.objective.text); this.audio.interact(); }
     else if (n.kind === 'completed') { this.ui.toast(`Missão concluída: ${n.quest.title} ✔`); this.audio.checkpoint(); }
-    this.queueSave(); this.refreshHud(true);
+    this.queueSave(); this.refreshHud();
   }
 
   /* ---------- jogador ---------- */
   private placePlayer(x: number, y: number, z: number, snap: boolean): void {
-    const b = this.body; b.x = x; b.y = y; b.z = z; b.vx = b.vy = b.vz = 0; b.grounded = false; b.climbing = false;
+    const b = this.body; b.x = x; b.y = y; b.z = z; b.vx = b.vy = b.vz = 0; b.grounded = false; b.climbing = false; b.inWater = false; b.support = null;
     this.model.root.position.set(x, y, z);
+    this.waterTime = 0;
     if (snap) this.rig.update(0.016, new Vector3(x, y, z), 0, true);
+  }
+
+  /** Marieta se machuca: perde um coração e volta ao último checkpoint. Sem game over: ao zerar, recomeça com vida cheia. */
+  private hurt(reason: string): void {
+    this.hearts--;
+    let msg = reason;
+    if (this.hearts <= 0) { this.hearts = MAX_HEARTS; msg = `${reason} Marieta descansou e recuperou as forças.`; }
+    this.respawn(msg);
   }
 
   private respawn(reason: string): void {
     this.ui.fade(true); this.ui.toast(reason, 2800);
     setTimeout(() => { this.placePlayer(this.checkpoint.x, this.checkpoint.y, this.checkpoint.z, true); this.ui.fade(false); }, 450);
+  }
+
+  /** A correnteza levou Marieta. Na primeira vez, Beto a resgata (cena narrativa); depois, perde um coração. */
+  private swept(): void {
+    const r = this.level.info.rescue;
+    if (r && !this.flags.has('rescued')) {
+      this.flags.add('rescued'); this.ui.fade(true);
+      setTimeout(() => { this.placePlayer(r.x, 0, r.z, true); this.ui.fade(false); this.startDialogue(r.npc); }, 450);
+      this.ui.toast('A correnteza levou Marieta… 🌊');
+      this.queueSave();
+    } else this.hurt('A correnteza levou Marieta!');
   }
 
   private makeBlob(): Mesh {
@@ -269,7 +340,6 @@ export class Game {
 
   private frame(): void {
     const real = this.engine.getDeltaTime() / 1000;
-    this.tick++;
     const f = this.input.read(Math.min(real, 0.05));
     this.auto?.tick(real);
     // Passos fixos de até 1/30 s: física estável mesmo em quadros lentos
@@ -330,6 +400,7 @@ export class Game {
     let speed = f.run ? RUN : WALK;
     if (mag > 0 && mag < 0.9) speed *= Math.max(0.4, mag / 0.9);
     const puddle = w.zoneAt(b.x, b.z, 'puddle'); if (puddle && b.grounded) speed *= 0.55;
+    if (b.inWater) speed *= 0.5; // nadar contra a correnteza é lento
     const len = Math.hypot(wx, wz) || 1; wx = (wx / len) * speed * (mag > 0 ? 1 : 0); wz = (wz / len) * speed * (mag > 0 ? 1 : 0);
 
     // Salto com buffer e coyote time
@@ -346,7 +417,11 @@ export class Game {
     const ev = w.step(b, dt, wx, wz, { accel: b.grounded ? 14 : 5, jump: this.jumpBuffer > 0, jumpSpeed: JUMP, glide: this.gliding, climb: wantsClimb, climbSpeed: CLIMB });
     if (ev.jumped) { this.jumpBuffer = 0; this.audio.jump(); }
     if (ev.landed) this.audio.land();
-    if (b.y < w.killY) this.respawn('Marieta caiu! Voltando ao último abrigo.');
+    if (b.y < w.killY) this.hurt('Marieta caiu!');
+
+    // Água: depois de um tempo, a correnteza leva Marieta
+    if (b.inWater) { this.waterTime += dt; if (this.waterTime > WATER_LIMIT) { this.waterTime = 0; this.swept(); return; } }
+    else this.waterTime = Math.max(0, this.waterTime - dt * 1.5);
 
     // Orientação do corpo
     const hv = Math.hypot(b.vx, b.vz); this.lastSpeed = b.grounded || b.climbing ? hv : this.lastSpeed * 0.9;
@@ -354,12 +429,13 @@ export class Game {
     else if (hv > 0.4) { const want = Math.atan2(b.vx, b.vz); let d = want - this.heading; d = Math.atan2(Math.sin(d), Math.cos(d)); this.heading += d * Math.min(1, dt * 12); }
 
     // Passos
-    if (b.grounded && hv > 0.5) { this.stepDist += hv * dt; const stride = f.run ? 1.5 : 1.1; if (this.stepDist > stride) { this.stepDist = 0; this.audio.footstep(b.surface, hv > 6.5); } }
+    if (b.grounded && hv > 0.5) { this.stepDist += hv * dt; const stride = f.run ? 1.5 : 1.1; if (this.stepDist > stride) { this.stepDist = 0; this.audio.footstep(b.inWater ? 'moss' : b.surface, hv > 6.5); } }
 
     this.interactions(f);
     this.hazards(dt);
+    if (this.state === 'playing' && !this.flags.has(`done${this.level.info.id}`) && this.quests.isDone(this.level.info.mainQuest)) this.complete();
     this.updateWorld(dt, Math.min(1, hv / RUN));
-    this.hudAcc += dt; if (this.hudAcc > 0.12) { this.hudAcc = 0; this.refreshHud(false); }
+    this.hudAcc += dt; if (this.hudAcc > 0.12) { this.hudAcc = 0; this.refreshHud(); }
     this.contextHints();
   }
 
@@ -371,45 +447,35 @@ export class Game {
       this.level.collect(p); this.collected.add(p.def.id);
       const item: ItemId = p.def.kind; this.inventory.add(item);
       this.quests.handle({ type: 'collect', item });
-      this.audio.collect(); this.ui.toast(`${ITEM_INFO[item].icon} ${ITEM_INFO[item].name}`, 1400); this.queueSave(); this.refreshHud(true);
+      let msg = `${ITEM_INFO[item].name}`;
+      if (item === 'dew' && this.hearts < MAX_HEARTS) { this.hearts++; msg += ' · +1 coração 💗'; }
+      this.audio.collect(); this.ui.toast(msg, 1600); this.queueSave(); this.refreshHud();
     }
     // Checkpoints
     const cp = w.zoneAt(b.x, b.z, 'checkpoint');
     if (cp && cp.id !== this.checkpoint.id) { this.checkpoint = { id: cp.id, x: cp.x, y: 0, z: cp.z }; this.audio.checkpoint(); this.ui.toast('Abrigo seguro: progresso salvo 🍃'); this.queueSave(); }
-    // Objetivo de chegada
-    if (this.level.gateOpen && w.zoneAt(b.x, b.z, 'goal') && this.quests.currentObjective('jardim')?.id === 'abrigo') {
-      this.quests.handle({ type: 'reach', target: 'shelter' });
-      if (this.quests.isDone('jardim')) { this.complete(); return; }
-    }
+    // Zonas de objetivo (chegar a um lugar)
+    const goal = w.zoneAt(b.x, b.z, 'goal');
+    if (goal) this.quests.handle(this.level.zoneEvent(goal.id));
     // Prompt de interação
     const npc = this.level.nearestNpc(b.x, b.z, 5);
-    const nearGate = this.level.nearGate(b.x, b.z);
+    const special = this.level.interaction(b.x, b.z, this.host);
     const key = this.input.usingTouch ? 'Toque em ✋' : 'E';
-    let prompt: string | null = null;
-    if (npc) prompt = `${key} — Conversar com Tito`;
-    else if (nearGate) { const n = this.inventory.count('dew'); prompt = `${key} — Molhar a folha-portão (${Math.min(n, 5)}/5 gotas)`; }
-    this.ui.prompt(prompt);
+    this.ui.prompt(npc ? `${key} — Conversar com ${npc.name}` : special ? `${key} — ${special.prompt}` : null);
     if (f.interact) {
       if (npc) this.startDialogue(npc.id);
-      else if (nearGate) this.useGate();
+      else if (special) special.run();
     }
-  }
-
-  private useGate(): void {
-    if (this.inventory.count('dew') < 5) { this.ui.toast(`A folha está seca e enrolada. Faltam ${5 - this.inventory.count('dew')} gotas de orvalho.`, 3200); this.audio.warn(); return; }
-    if (this.quests.currentObjective('jardim')?.id !== 'portao') { this.ui.toast('Converse com Tito primeiro.'); return; }
-    this.inventory.remove('dew', 5); this.level.openGate(); this.flags.add('gate');
-    this.quests.handle({ type: 'interact', target: 'leafgate' }); this.audio.collect(); this.audio.interact();
-    this.ui.toast('A folha-portão se desenrola e abre o caminho! 🍃', 3200); this.queueSave(); this.refreshHud(true);
   }
 
   private hazards(dt: number): void {
     const b = this.body;
-    const allowed = !this.flags.has('gate') && b.z > -45 && b.y < 6 && !this.level.world.zoneAt(b.x, b.z, 'goal') && this.quests.currentObjective('jardim')?.id !== 'tito';
+    const allowed = this.level.info.birdActive(b, this.quests, this.flags);
     const ev = this.bird.update(dt, b, this.level.world, this.settings.difficulty, allowed);
     if (ev === 'warn') { this.audio.warn(); this.ui.toast('🦅 Sombra de pássaro! Esconda-se sob uma folha ou cogumelo!', 3200); }
-    if (ev === 'caught') this.respawn('O pássaro quase te pegou! Voltando ao último abrigo.');
-    this.ui.danger(this.bird.danger * 0.9);
+    if (ev === 'caught') this.hurt('O pássaro quase te pegou!');
+    const water = this.waterTime > 0.2 ? Math.min(1, this.waterTime / WATER_LIMIT) : 0;
+    this.ui.danger(Math.max(this.bird.danger * 0.9, water * 0.8));
     this.audio.setTension(this.bird.danger > 0.1 ? this.bird.danger : 0);
   }
 
@@ -417,11 +483,12 @@ export class Game {
     const b = this.body;
     if (this.flags.has('glide') && !this.hintShown.has('glide') && !b.grounded) { this.hintShown.add('glide'); this.ui.hint(this.input.usingTouch ? 'Segure o botão de pular no ar para planar' : 'Segure ESPAÇO no ar para abrir as asas e planar', 5000); }
     if (b.climbing && !this.hintShown.has('climb')) { this.hintShown.add('climb'); this.ui.hint('Segure para frente para subir pelo caule', 3500); }
+    if (b.inWater && !this.hintShown.has('water')) { this.hintShown.add('water'); this.ui.hint('Na água a correnteza arrasta! Saia depressa para a margem ou uma pedra.', 4500); }
   }
 
   /* ---------- diálogo ---------- */
   private startDialogue(npcId: string): void {
-    const d = pickDialogue(npcId, this.quests);
+    const d = this.level.info.pickDialogue(npcId, this.quests, this.flags);
     this.dialogue.start(d); this.state = 'dialogue'; this.input.enabled = false;
     this.ui.prompt(null); this.ui.showDialogue(d.speaker, this.dialogue.line); this.audio.interact();
   }
@@ -436,6 +503,7 @@ export class Game {
   }
   private runAction(a: string): void {
     if (a === 'unlockGlide') { this.flags.add('glide'); this.ui.toast('Você aprendeu a planar! ✨', 3000); }
+    else if (a.startsWith('flag:')) this.flags.add(a.slice(5));
     else if (a.startsWith('talk:')) this.quests.handle({ type: 'talk', target: a.slice(5) });
   }
   private updateDialogue(dt: number, f: InputFrame): void {
@@ -446,19 +514,33 @@ export class Game {
   }
 
   /* ---------- HUD ---------- */
-  private refreshHud(force: boolean): void {
-    void force;
+  /** Alvo do objetivo atual, para o indicador do mapa. */
+  private objectiveTarget(): { x: number; z: number } | undefined {
+    const main = this.quests.mainObjective();
+    if (!main || this.settings.difficulty === 'explorer') return undefined;
+    const o = main.objective, b = this.body;
+    if (o.type === 'talk') { const n = this.level.npcs.find((x) => x.id === o.target); return n ? { x: n.x, z: n.z } : undefined; }
+    if (o.type === 'collect') {
+      let best: { x: number; z: number } | undefined, bd = Infinity;
+      for (const p of this.level.pickups) if (!p.taken && p.def.kind === o.target) { const d = Math.hypot(p.def.x - b.x, p.def.z - b.z); if (d < bd) { bd = d; best = { x: p.def.x, z: p.def.z }; } }
+      return best;
+    }
+    if (o.type === 'reach') { const z = this.level.world.zones.find((q) => q.id === o.target); return z ? { x: z.x, z: z.z } : undefined; }
+    return this.level.info.interactPoints[o.target];
+  }
+
+  private refreshHud(): void {
     const main = this.quests.mainObjective();
     if (main) {
       const c = main.objective.count ?? 1;
       this.ui.setObjective(main.quest.title, main.objective.text, c > 1 ? { n: Math.min(main.progress, c), of: c } : undefined);
-    } else this.ui.setObjective('Jardim das Gotas', 'Explore livremente — a jornada continua!');
-    this.ui.setItems(this.inventory);
+    } else this.ui.setObjective(this.level.info.title, 'Explore livremente — a jornada continua!');
+    this.ui.setItems(this.inventory); this.ui.setHearts(this.hearts, MAX_HEARTS);
     const b = this.body;
-    drawMap(this.ui.minimap(), { level: this.level, x: b.x, z: b.z, yaw: this.rig.yaw, showItems: this.settings.visualAssist || this.settings.difficulty === 'calm' || this.observing, gateOpen: this.level.gateOpen });
+    drawMap(this.ui.minimap(), { level: this.level, x: b.x, z: b.z, yaw: this.rig.yaw, showItems: this.settings.visualAssist || this.settings.difficulty === 'calm' || this.observing, target: this.objectiveTarget() }, 42);
   }
   private paintMap(c: HTMLCanvasElement): void {
     const b = this.body;
-    drawMap(c, { level: this.level, x: b.x, z: b.z, yaw: this.rig.yaw, showItems: this.settings.visualAssist || this.settings.difficulty === 'calm', gateOpen: this.level.gateOpen });
+    drawMap(c, { level: this.level, x: b.x, z: b.z, yaw: this.rig.yaw, showItems: this.settings.visualAssist || this.settings.difficulty === 'calm', target: this.objectiveTarget() });
   }
 }

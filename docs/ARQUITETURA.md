@@ -34,8 +34,15 @@ e2e/                      Playwright: desktop (fluxo completo) e celular (toque)
 - **Qualidade**: `AutoQuality` mede o FPS médio a cada 3 s e desce/sobe de perfil; resolução reduzida via `hardwareScalingLevel`.
 - **Sem câmera de "segunda pessoa"** (não é um modo convencional): 1ª, 3ª pessoa e orbital.
 
+## Fases
+
+`LevelBase` concentra os construtores de cenário (pedras, folhas, cogumelos, coletáveis, NPCs, mapa) e o descarte limpo.
+`Level1`/`Level2` só declaram dados (`level1Data`, `level2Data`), regras próprias (portão, ponte) e `LevelInfo`
+(missões, diálogos, névoa, pássaro, resgate). O `Game` troca de fase com `loadLevel(n)`.
+Atenção: o rastreio de recursos da fase termina em `finishBuild()`; recursos criados depois (ex.: pós-processamento) não são da fase.
+
 ## Como adicionar uma fase
 
-1. Criar `levelNData.ts` (colisores, coletáveis, NPCs) e `LevelN.ts` seguindo `Level1`.
+1. Criar `levelNData.ts` e `LevelN.ts` estendendo `LevelBase` (chame `finishBuild()` no fim do construtor).
 2. Declarar missões em `data/quests.ts` e diálogos em `data/dialogues.ts`.
-3. Generalizar `Game` para escolher o nível pelo `SaveData.level` (hoje fixo na Fase 1).
+3. Registrar em `LEVELS` (`game/Game.ts`) e aumentar `READY_PHASES` (`ui/UI.ts`).

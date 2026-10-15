@@ -12,13 +12,14 @@ export class GameAudio {
   private noise!: AudioBuffer;
   private windGain!: GainNode;
   private tension!: GainNode;
-  private spring: { panner: PannerNode } | null = null;
+  private springs: AudioNode[] = [];
   private nextBird = 0; private nextNote = 0; private chordIdx = 0;
   private running = false;
   private settings: Settings | null = null;
   private tensionTarget = 0;
 
   get ready(): boolean { return !!this.ctx; }
+  get hasSprings(): boolean { return this.springs.length > 0; }
 
   /** Deve ser chamado dentro de um gesto do usuário (clique/toque). */
   init(): void {
@@ -96,17 +97,23 @@ export class GameAudio {
   }
 
   /** Fonte espacial contínua (água corrente) em posição do mundo. */
-  addSpring(x: number, y: number, z: number): void {
-    if (!this.ctx || this.spring) return;
+  addSpring(x: number, y: number, z: number, gain = 2.2): void {
+    if (!this.ctx) return;
     const ctx = this.ctx;
     const src = this.loopNoise();
     const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1400;
-    const g = ctx.createGain(); g.gain.value = 2.2;
+    const g = ctx.createGain(); g.gain.value = gain;
     const p = ctx.createPanner();
     p.panningModel = 'HRTF'; p.distanceModel = 'inverse'; p.refDistance = 6; p.rolloffFactor = 1.3; p.maxDistance = 400;
     p.positionX.value = x; p.positionY.value = y; p.positionZ.value = z;
     src.connect(hp); hp.connect(g); g.connect(p); p.connect(this.buses.ambient);
-    this.spring = { panner: p };
+    this.springs.push(p, g, hp, src);
+  }
+
+  /** Remove as fontes espaciais da fase anterior. */
+  clearSprings(): void {
+    for (const n of this.springs) { try { if (n instanceof AudioBufferSourceNode) n.stop(); n.disconnect(); } catch { /* já parado */ } }
+    this.springs = [];
   }
 
   setListener(px: number, py: number, pz: number, fx: number, fz: number): void {

@@ -1,10 +1,15 @@
-export type ItemId = 'dew' | 'seed' | 'fiber';
+export type ItemId = 'dew' | 'seed' | 'leaf' | 'flower' | 'crystal' | 'photo';
 
-export const ITEM_INFO: Record<ItemId, { name: string; icon: string }> = {
-  dew: { name: 'Gota de orvalho', icon: '💧' },
-  seed: { name: 'Semente', icon: '🌱' },
-  fiber: { name: 'Fibra vegetal', icon: '🧵' },
+/** Os seis tipos colecionáveis da arte de referência. `art` é o gradiente do ícone redondo. */
+export const ITEM_INFO: Record<ItemId, { name: string; plural: string; use: string; art: string }> = {
+  dew: { name: 'Gota de orvalho', plural: 'Gotas de Orvalho', use: 'Vida extra e portões', art: 'radial-gradient(circle at 35% 30%,#d6f4ee,#4aa3b0)' },
+  seed: { name: 'Semente', plural: 'Sementes', use: 'Pontos e plantio', art: 'radial-gradient(circle at 35% 30%,#ffbe7a,#a05a1e)' },
+  leaf: { name: 'Folha especial', plural: 'Folhas Especiais', use: 'Habilidades e pontes', art: 'radial-gradient(circle at 35% 30%,#bff09a,#2e7a4a)' },
+  flower: { name: 'Flor rara', plural: 'Flores Raras', use: 'Colecionáveis', art: 'radial-gradient(circle at 35% 30%,#ff9ccb,#a6428c)' },
+  crystal: { name: 'Cristal natural', plural: 'Cristais Naturais', use: 'Conquistas', art: 'radial-gradient(circle at 35% 30%,#bfe3ff,#4a6fd0)' },
+  photo: { name: 'Foto da jornada', plural: 'Fotos da Jornada', use: 'Galeria', art: 'radial-gradient(circle at 35% 30%,#f1e6c8,#8a7a56)' },
 };
+export const ITEM_ORDER = Object.keys(ITEM_INFO) as ItemId[];
 
 export class Inventory {
   private items = new Map<ItemId, number>();
