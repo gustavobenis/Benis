@@ -1,9 +1,16 @@
 import {
-  Color3, Color4, DefaultRenderingPipeline, DirectionalLight, DynamicTexture, HemisphericLight, MeshBuilder, ParticleSystem, ReflectionProbe,
+  ColorCurves, SSAO2RenderingPipeline, Color3, Color4, DefaultRenderingPipeline, DirectionalLight, DynamicTexture, HemisphericLight, MeshBuilder, ParticleSystem, ReflectionProbe,
   RenderTargetTexture, Scene, ShadowGenerator, StandardMaterial, Texture, Vector3,
 } from '@babylonjs/core';
 import type { Camera, Mesh } from '@babylonjs/core';
 import type { QualityProfile } from '../engine/Quality';
+
+/** Ajustes de iluminação por fase. */
+export interface LightPreset {
+  dir: [number, number, number]; sun: [number, number, number]; sunI: number;
+  sky: [number, number, number]; ground: [number, number, number]; hemiI: number;
+  exposure: number; contrast: number; saturation: number; shadowHue?: number;
+}
 
 /** Céu, luz solar, sombras, névoa, partículas atmosféricas e pós-processamento. */
 export class Environment {
@@ -18,6 +25,8 @@ export class Environment {
   private shaftMeshes: Mesh[] = [];
   private shaftTex!: DynamicTexture;
   private dir = new Vector3(-0.45, -0.72, 0.5).normalize();
+  private hemi!: HemisphericLight;
+  private ssao: SSAO2RenderingPipeline | null = null;
   private t = 0;
 
   constructor(private scene: Scene, private camera: Camera) {
@@ -30,7 +39,7 @@ export class Environment {
     ip.toneMappingEnabled = true; ip.toneMappingType = 1; // ACES
     ip.exposure = 1.15; ip.contrast = 1.18;
 
-    const hemi = new HemisphericLight('hemi', new Vector3(0.2, 1, 0.1), scene);
+    const hemi = this.hemi = new HemisphericLight('hemi', new Vector3(0.2, 1, 0.1), scene);
     hemi.intensity = 0.75; hemi.diffuse = new Color3(0.85, 0.95, 1); hemi.groundColor = new Color3(0.3, 0.38, 0.2);
     this.sun = new DirectionalLight('sun', this.dir.clone(), scene);
     this.sun.intensity = 3.2; this.sun.diffuse = new Color3(1, 0.93, 0.78); this.sun.specular = new Color3(1, 0.95, 0.85);
@@ -89,6 +98,18 @@ export class Environment {
     });
   }
 
+  /** Luz solar, ambiente e gradação de cor de cada fase (hora do dia e clima). */
+  setLighting(l: LightPreset): void {
+    this.dir = new Vector3(...l.dir).normalize();
+    this.sun.direction.copyFrom(this.dir);
+    this.sun.diffuse = new Color3(...l.sun); this.sun.intensity = l.sunI;
+    this.hemi.intensity = l.hemiI; this.hemi.diffuse = new Color3(...l.sky); this.hemi.groundColor = new Color3(...l.ground);
+    const ip = this.scene.imageProcessingConfiguration;
+    ip.exposure = l.exposure; ip.contrast = l.contrast;
+    ip.colorCurvesEnabled = true;
+    const cc = new ColorCurves(); cc.globalSaturation = l.saturation; cc.shadowsHue = l.shadowHue ?? 220; cc.shadowsSaturation = l.shadowHue ? 25 : 0; ip.colorCurves = cc;
+  }
+
   /** Névoa e cor de fundo de cada fase. */
   setAtmosphere(color: [number, number, number], density: number): void {
     this.scene.fogColor = new Color3(...color);
@@ -134,6 +155,13 @@ export class Environment {
       this.pipeline.bloomEnabled = true; this.pipeline.bloomThreshold = 0.85; this.pipeline.bloomWeight = q.level === 'high' ? 0.3 : 0.18; this.pipeline.bloomKernel = 48;
       this.pipeline.imageProcessingEnabled = true;
     } else if (this.pipeline) { this.pipeline.dispose(); this.pipeline = null; }
+    // Oclusão ambiente em tela: só no perfil alto (custo extra)
+    if (q.level === 'high' && !this.ssao) {
+      try {
+        this.ssao = new SSAO2RenderingPipeline('ssao', this.scene, { ssaoRatio: 0.5, blurRatio: 0.5 }, [this.camera]);
+        this.ssao.radius = 2.2; this.ssao.totalStrength = 0.9; this.ssao.samples = 12; this.ssao.expensiveBlur = false;
+      } catch (e) { console.warn('[gfx] SSAO indisponível', e); this.ssao = null; }
+    } else if (q.level !== 'high' && this.ssao) { this.ssao.dispose(); this.ssao = null; }
   }
   get hasPipeline(): boolean { return !!this.pipeline; }
 

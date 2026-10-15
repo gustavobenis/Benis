@@ -10,6 +10,7 @@ import { LevelBase, type LevelHost } from '../levels/LevelBase';
 import { Level1 } from '../levels/Level1';
 import { Materials } from '../levels/Materials';
 import { Level2 } from '../levels/Level2';
+import { Level3 } from '../levels/Level3';
 import { MarietaModel } from '../player/Marieta';
 import { BirdShadow } from './BirdShadow';
 import { QuestLog, type QuestNotice } from '../systems/Quests';
@@ -30,7 +31,11 @@ const WATER_LIMIT = 2.2;
 const LEVELS: Record<number, (scene: Scene, grass: number) => LevelBase> = {
   1: (s, g) => new Level1(s, g),
   2: (s, g) => new Level2(s, g),
+  3: (s, g) => new Level3(s, g),
 };
+
+/** Habilidades aprendidas na Fase 1 (Tito) valem para as fases seguintes. */
+const learned = (n: number): string[] => (n >= 2 ? ['glide'] : []);
 
 /** Orquestra o jogo: cena, fases, sistemas, estados e laço principal. */
 export class Game {
@@ -132,10 +137,12 @@ export class Game {
     this.quests.onNotice((q) => this.onQuestNotice(q));
     this.ui.questsRef = this.quests;
     this.env.setAtmosphere(level.info.fog.color, level.info.fog.density);
+    this.env.setLighting(level.info.light);
     this.env.setShafts(level.info.shafts);
     level.grass.setFog(this.scene.fogColor, this.scene.fogDensity);
     this.model.root.position.set(level.info.start.x, 0, level.info.start.z);
     this.flags.clear(); this.collected.clear(); this.inventory.load(undefined);
+    learned(n).forEach((f) => this.flags.add(f));
     this.checkpoint = { id: 'cp0', x: level.info.start.x, y: 0, z: level.info.start.z };
     this.bird.reset(); this.observing = false; this.env.setObserve(false);
     this.applyQuality(this.quality);
@@ -195,6 +202,7 @@ export class Game {
   /** Volta o estado da fase atual ao início. */
   private resetLevel(): void {
     this.quests.reset(); this.inventory.load(undefined); this.flags.clear(); this.collected.clear();
+    learned(this.level.info.id).forEach((f) => this.flags.add(f));
     this.level.resetState();
     const st = this.level.info.start;
     this.checkpoint = { id: 'cp0', x: st.x, y: 0, z: st.z };
@@ -244,9 +252,13 @@ export class Game {
     const t = Math.floor(this.playTime), mm = Math.floor(t / 60), ss = String(t % 60).padStart(2, '0');
     const tot = this.level.info.totals;
     const stats = [`⏱ Tempo: ${mm}:${ss}`, ...(Object.keys(tot) as ItemId[]).map((k) => `${ITEM_INFO[k].plural}: ${this.countCollected(k)}/${tot[k]}`)].join('<br>');
-    this.ui.complete(hasNext
-      ? { title: id === 1 ? 'Jardim concluído!' : 'Fase concluída!', text: 'Marieta atravessou o Jardim das Gotas e encontrou um abrigo seguro. A grande aventura continua rio adiante…', stats: stats + '<br><small>Fase 2 liberada: O Rio</small>', next: true, final: false }
-      : { title: 'Obrigado por jogar!', text: 'Marieta e Beto se encontraram à beira do rio. A próxima parada é a Floresta (Fase 3, em desenvolvimento).', stats: stats + '<br><small>Fim da demo atual — as fases 3 a 8 virão em seguida.</small>', next: false, final: true });
+    const OUT: Record<number, { title: string; text: string; note: string }> = {
+      1: { title: 'Jardim concluído!', text: 'Marieta atravessou o Jardim das Gotas e encontrou um abrigo seguro. A grande aventura continua rio adiante…', note: 'Fase 2 liberada: O Rio' },
+      2: { title: 'Fase concluída!', text: 'Marieta e Beto se encontraram à beira do rio. Adiante, a floresta escura espera por eles.', note: 'Fase 3 liberada: A Floresta' },
+      3: { title: 'Obrigado por jogar!', text: 'Dona Olívia abençoou a travessia. A Colônia (Fase 4) precisa de ajuda — mas isso é na próxima parte da aventura.', note: 'Fim da demo atual — as fases 4 a 8 virão em seguida.' },
+    };
+    const o = OUT[id] ?? OUT[3];
+    this.ui.complete({ title: o.title, text: o.text, stats: `${stats}<br><small>${o.note}</small>`, next: hasNext, final: !hasNext });
     this.ui.setTouch(false); this.ui.prompt(null); void this.flushSave();
   }
   private countCollected(kind: ItemId): number { return this.level.pickups.filter((p) => p.taken && p.def.kind === kind).length; }
@@ -401,6 +413,7 @@ export class Game {
     if (mag > 0 && mag < 0.9) speed *= Math.max(0.4, mag / 0.9);
     const puddle = w.zoneAt(b.x, b.z, 'puddle'); if (puddle && b.grounded) speed *= 0.55;
     if (b.inWater) speed *= 0.5; // nadar contra a correnteza é lento
+    if (b.grounded && w.zoneAt(b.x, b.z, 'web')) speed *= 0.35; // teia: pegajosa
     const len = Math.hypot(wx, wz) || 1; wx = (wx / len) * speed * (mag > 0 ? 1 : 0); wz = (wz / len) * speed * (mag > 0 ? 1 : 0);
 
     // Salto com buffer e coyote time
@@ -417,6 +430,7 @@ export class Game {
     const ev = w.step(b, dt, wx, wz, { accel: b.grounded ? 14 : 5, jump: this.jumpBuffer > 0, jumpSpeed: JUMP, glide: this.gliding, climb: wantsClimb, climbSpeed: CLIMB });
     if (ev.jumped) { this.jumpBuffer = 0; this.audio.jump(); }
     if (ev.landed) this.audio.land();
+    if (ev.bounced) this.audio.bounce();
     if (b.y < w.killY) this.hurt('Marieta caiu!');
 
     // Água: depois de um tempo, a correnteza leva Marieta
@@ -474,8 +488,10 @@ export class Game {
     const ev = this.bird.update(dt, b, this.level.world, this.settings.difficulty, allowed);
     if (ev === 'warn') { this.audio.warn(); this.ui.toast('🦅 Sombra de pássaro! Esconda-se sob uma folha ou cogumelo!', 3200); }
     if (ev === 'caught') this.hurt('O pássaro quase te pegou!');
+    const seen = this.level.takeHazard();
+    if (seen) { this.hurt(seen); this.waterTime = 0; return; }
     const water = this.waterTime > 0.2 ? Math.min(1, this.waterTime / WATER_LIMIT) : 0;
-    this.ui.danger(Math.max(this.bird.danger * 0.9, water * 0.8));
+    this.ui.danger(Math.max(this.bird.danger * 0.9, water * 0.8, this.level.alert * 0.95));
     this.audio.setTension(this.bird.danger > 0.1 ? this.bird.danger : 0);
   }
 

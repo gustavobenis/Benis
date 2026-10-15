@@ -111,3 +111,15 @@ describe('Água e plataformas móveis', () => {
     expect(b.y).toBeCloseTo(0.5, 2);
   });
 });
+
+describe('Cogumelo-trampolim', () => {
+  it('lança para cima ao pousar e depois volta a cair', () => {
+    const w = new CollisionWorld();
+    w.add({ kind: 'cyl', x: 0, z: 0, r: 3, yBase: 2, yTop: 3, surface: 'moss', bounce: 16 });
+    const b = createBody(0, 6, 0);
+    let bounced = false, maxY = 0;
+    for (let i = 0; i < 240; i++) { const ev = w.step(b, 1 / 60, 0, 0, OPTS); bounced = bounced || ev.bounced; maxY = Math.max(maxY, b.y); }
+    expect(bounced).toBe(true);
+    expect(maxY).toBeGreaterThan(6);   // subiu mais alto que a queda inicial pela energia do trampolim
+  });
+});

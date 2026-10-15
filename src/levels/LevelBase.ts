@@ -9,12 +9,13 @@ import type { ItemId, Inventory } from '../systems/Inventory';
 import type { GameEvent, QuestDef, QuestLog } from '../systems/Quests';
 import type { DialogueDef } from '../systems/Dialogue';
 import type { GameAudio } from '../engine/Audio';
+import type { LightPreset } from './Environment';
 
 export interface PickupDef { id: string; kind: ItemId; x: number; y: number; z: number }
 export interface NpcDef { id: string; kind: NpcKind; name: string; x: number; z: number; yaw: number }
 export interface StoneDef { x: number; z: number; r: number; h: number }
 export interface LeafDef { x: number; z: number; y: number; hx: number; hz: number; yaw: number }
-export interface MushroomDef { x: number; z: number; stem: number; capR: number; stemR: number }
+export interface MushroomDef { x: number; z: number; stem: number; capR: number; stemR: number; /** Trampolim: velocidade de lançamento. */ bounce?: number; /** Chapéu luminoso (cor RGB 0..1). */ glow?: [number, number, number] }
 export interface StemDef { x: number; z: number; h: number; r: number }
 export interface LogDef { x: number; z: number; hx: number; hz: number; h: number; yaw: number }
 export interface PuddleDef { id: string; x: number; z: number; r: number }
@@ -48,6 +49,7 @@ export interface LevelInfo {
   quests: QuestDef[]; mainQuest: string;
   totals: Partial<Record<ItemId, number>>;
   fog: { color: [number, number, number]; density: number };
+  light: LightPreset;
   shafts: [number, number][];
   springs: [number, number, number][];
   pickDialogue(npc: string, q: QuestLog, flags: Set<string>): DialogueDef;
@@ -111,6 +113,11 @@ export abstract class LevelBase {
   /** Interação específica da fase perto de (x,z), se houver. */
   abstract interaction(x: number, z: number, host: LevelHost): Interaction | undefined;
   abstract update(dt: number, playerPos: Vector3, observing: boolean, toneByPostFx: boolean): void;
+
+  /** Alerta de predador da fase (0..1) para o indicador de perigo. */
+  get alert(): number { return 0; }
+  /** Perigo pendente (ex.: foi vista pela aranha): devolve a mensagem uma única vez. */
+  takeHazard(): string | null { return null; }
 
   /** Ao receber um evento de zona (ex.: chegar à outra margem). */
   zoneEvent(id: string): GameEvent { return { type: 'reach', target: id }; }
@@ -185,7 +192,13 @@ export abstract class LevelBase {
     cap.scaling.y = capH / m.capR; cap.position.set(m.x, m.stem - 0.05, m.z); cap.material = this.mats.mushCap;
     cap.receiveShadows = true; this.casters.push(cap);
     this.addShape({ kind: 'cyl', x: m.x, z: m.z, r: m.stemR * 1.1, yBase: 0, yTop: m.stem, surface: 'wood' });
-    this.addShape({ kind: 'cyl', x: m.x, z: m.z, r: m.capR * 0.8, yBase: m.stem - 0.6, yTop: m.stem + capH * 0.7, surface: 'moss' });
+    const capShape = this.addShape({ kind: 'cyl', x: m.x, z: m.z, r: m.capR * 0.8, yBase: m.stem - 0.6, yTop: m.stem + capH * 0.7, surface: 'moss' });
+    if (m.bounce) capShape.bounce = m.bounce;
+    if (m.glow) {
+      const g = new StandardMaterial('glowCap', this.scene);
+      g.diffuseColor = new Color3(...m.glow).scale(0.55); g.emissiveColor = new Color3(...m.glow).scale(0.75); g.specularPower = 60;
+      cap.material = g;
+    }
   }
 
   protected addClimbStem(s: StemDef): void {

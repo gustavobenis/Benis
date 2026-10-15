@@ -180,12 +180,57 @@ await page.screenshot({ path: OUT + '13-fase2-luna.png' });
 await talk(12, 43);
 ok(await waitState('complete'), 'encontrar Beto conclui a Fase 2');
 await page.screenshot({ path: OUT + '14-fase2-vitoria.png' });
-ok(!(await page.isVisible('#complete-next')), 'Fase 2 é a última disponível: sem botão de próxima fase');
+ok(await page.isVisible('#complete-next'), 'Fase 2 concluída oferece a Fase 3');
+
+console.log('7b. Fase 3 — A Floresta');
+await page.click('#complete-next');
+ok(await waitState('playing'), 'Próxima fase inicia a Fase 3');
+ok((await G('g.level.info.id')) === 3, 'Fase 3 carregada');
+ok(await G("g.flags.has('glide')"), 'habilidade de planar (aprendida na Fase 1) continua disponível');
+await prep();
+await G('(g.bird.nextAt = 1e9, true)'); // determinismo: sem pássaro durante os testes da floresta
+await talk(8, -77);
+ok((await G("g.quests.currentObjective('floresta').id")) === 'cristais', 'Tico pede os cristais de luz');
+await page.screenshot({ path: OUT + '16-fase3-tico.png' });
+// Cogumelo-trampolim: pousar na copa lança Marieta para o alto (física real)
+await tp(-25, 7, -57);
+let apex = 0; const t0 = Date.now();
+while (Date.now() - t0 < 20000 && apex < 8.5) { apex = Math.max(apex, await G('g.body.y')); await sleep(60); }
+ok(apex > 8.5, `cogumelo cor-de-rosa funciona como trampolim (ápice ${apex.toFixed(1)})`);
+await page.screenshot({ path: OUT + '17-fase3-trampolim.png' });
+// Teia pegajosa
+ok(!!(await G("g.level.world.zoneAt(12, -44, 'web')")), 'zona de teia registrada');
+// Aranha-caçadora: exposta é vista; sob o tronco (cobertura) não é
+await G("(g.level.patrol.wait = 1e9, true)");
+await tp(40, 0, 70); await sleep(300);
+await G("(g.level.patrol.x = -12, g.level.patrol.z = -50, g.level.patrol.yaw = 0, g.level.patrol.wait = 1e9, true)");
+await tp(-12, 0, -36); // sob o tronco suspenso
+await sleep(4000);
+ok((await G('g.hearts')) === 3, 'sob o tronco, a aranha-caçadora não vê Marieta');
+await tp(-12, 0, -61); await G("(g.level.patrol.x = -12, g.level.patrol.z = -50, g.level.patrol.yaw = 0, g.level.patrol.wait = 1e9, true)");
+ok(await until('g.hearts === 2', 30000), 'a céu aberto, a aranha-caçadora vê Marieta e custa um coração');
+await until("document.getElementById('fade').classList.contains('on') === false", 5000);
+await G("(g.level.patrol.wait = 1e9, true)");
+const crystals = await G("g.level.pickups.filter(p => p.def.kind === 'crystal').map(p => [p.def.x, p.def.y, p.def.z])");
+for (let i = 0; i < crystals.length; i++) { const [x, y, z] = crystals[i]; await tp(x, y, z); await until(`g.inventory.count('crystal') >= ${i + 1}`, 8000); }
+ok((await G("g.inventory.count('crystal')")) === 3, 'coletou 3 cristais de luz');
+ok((await G("g.quests.currentObjective('floresta').id")) === 'altar', 'objetivo: acender o altar');
+await tp(0, 0, 45.5); await until("!document.getElementById('prompt').classList.contains('hidden')");
+await page.keyboard.press('e');
+ok(await until('g.level.gateOpen'), 'altar aceso: a muralha de teia se abre');
+await sleep(2500);
+await page.screenshot({ path: OUT + '18-fase3-altar.png' });
+await tp(0, 0, 78);
+ok(await until("g.quests.currentObjective('floresta')?.id === 'olivia'", 15000), 'chegou à clareira');
+await talk(0, 82);
+ok(await waitState('complete'), 'falar com Dona Olívia conclui a Fase 3');
+await page.screenshot({ path: OUT + '19-fase3-vitoria.png' });
+ok(!(await page.isVisible('#complete-next')), 'Fase 3 é a última disponível: sem botão de próxima fase');
 
 console.log('8. Rio: correnteza, resgate e coração');
 await page.click('#complete-menu');
 ok(await waitState('menu'), 'volta ao menu');
-ok((await page.locator('.phase:not(.locked)').count()) === 2, 'seleção de fases mostra 2 fases liberadas');
+ok((await page.locator('.phase:not(.locked)').count()) === 3, 'seleção de fases mostra 3 fases liberadas');
 page.once('dialog', (d) => d.accept());
 await page.locator('.phase').nth(1).click();
 ok(await waitState('playing'), 'iniciar a Fase 2 pela seleção');

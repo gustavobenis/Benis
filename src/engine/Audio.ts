@@ -195,6 +195,7 @@ export class GameAudio {
     src.start(t, Math.random() * 2, 0.1);
   }
   jump(): void { if (this.ctx) this.sweep(260, 520, 0.14, 0.12); }
+  bounce(): void { if (this.ctx) this.sweep(180, 720, 0.28, 0.14); }
   land(): void { if (this.ctx) this.footstep('soil', true); }
   collect(): void { if (!this.ctx) return; this.tone(880, 0.35, 0.18, 'sine', this.buses.sfx); setTimeout(() => this.ctx && this.tone(1320, 0.5, 0.15, 'sine', this.buses.sfx), 90); }
   interact(): void { if (this.ctx) this.tone(520, 0.12, 0.1, 'triangle', this.buses.sfx); }

@@ -3,7 +3,7 @@ import type { AbstractMesh, Scene } from '@babylonjs/core';
 import type { Materials } from '../levels/Materials';
 import { SnailModel } from './Marieta';
 
-export type NpcKind = 'snail' | 'ant' | 'butterfly' | 'beetle';
+export type NpcKind = 'snail' | 'ant' | 'butterfly' | 'beetle' | 'grasshopper' | 'spider';
 
 /** Contrato comum dos personagens secundários. */
 export interface NpcModel {
@@ -136,11 +136,86 @@ class BeetleNpc implements NpcModel {
   }
 }
 
+/** Aranha de 8 patas: Dona Olívia (protetora, roxa) ou a caçadora da floresta (escura, olhos vermelhos). */
+export class SpiderModel implements NpcModel {
+  readonly root: TransformNode; readonly meshes: AbstractMesh[] = []; hover = 0;
+  private legs: { hip: TransformNode; knee: TransformNode; side: number; phase: number }[] = [];
+  private t = Math.random() * 6; private body: TransformNode; private moving = 0;
+  constructor(scene: Scene, mats: Materials, readonly hunter = false) {
+    this.root = new TransformNode(hunter ? 'hunter' : 'olivia', scene);
+    this.body = new TransformNode('spBody', scene); this.body.parent = this.root;
+    const skin = pbr(scene, 'spSkin', hunter ? new Color3(0.09, 0.07, 0.06) : new Color3(0.42, 0.2, 0.5), 0.5);
+    const mark = pbr(scene, 'spMark', hunter ? new Color3(0.5, 0.12, 0.08) : new Color3(0.95, 0.85, 0.6), 0.45);
+    const add = (m: Mesh, mat: Mesh['material'], parent: TransformNode = this.body) => { m.material = mat; m.parent = parent; this.meshes.push(m); return m; };
+    add(sphere(scene, 1, 1.5, 1.2, 1.8, 0, 1.1, -1.1), skin);
+    add(sphere(scene, 1, 0.5, 0.35, 0.9, 0, 1.75, -1.0), mark);
+    add(sphere(scene, 1, 1.0, 0.8, 1.1, 0, 0.95, 0.5), skin);
+    const eyeMat = hunter ? pbr(scene, 'hEye', new Color3(0.9, 0.1, 0.05), 0.2) : mats.white;
+    eyeMat.emissiveColor = hunter ? new Color3(0.6, 0.05, 0.02) : eyeMat.emissiveColor;
+    for (const sx of [-1, 1]) {
+      add(sphere(scene, hunter ? 0.22 : 0.42, 1, 1.1, 0.8, sx * 0.24, 1.2, 1.0), eyeMat);
+      if (!hunter) add(sphere(scene, 0.22, 1, 1, 0.8, sx * 0.24, 1.2, 1.17), mats.black);
+      add(sphere(scene, 0.14, 1, 1, 1, sx * 0.45, 1.05, 0.95), eyeMat);
+    }
+    for (let i = 0; i < 8; i++) {
+      const side = i % 2 === 0 ? -1 : 1, row = i >> 1;
+      const hip = new TransformNode('h', scene); hip.parent = this.body; hip.position.set(side * 0.4, 1.0, 0.85 - row * 0.45);
+      hip.rotation.y = side * (0.35 + row * 0.35 - 0.45); hip.rotation.z = side * 1.0;
+      const up = MeshBuilder.CreateCylinder('u', { height: 1.3, diameter: 0.12, tessellation: 6 }, scene); up.position.y = -0.65; add(up, skin, hip);
+      const knee = new TransformNode('k', scene); knee.parent = hip; knee.position.y = -1.3; knee.rotation.z = -side * 1.5;
+      const lo = MeshBuilder.CreateCylinder('lo', { height: 1.5, diameter: 0.09, tessellation: 6 }, scene); lo.position.y = -0.75; add(lo, skin, knee);
+      this.legs.push({ hip, knee, side, phase: (i + row) % 2 ? 0 : Math.PI });
+    }
+    this.root.scaling.setAll(hunter ? 1.1 : 1.5);
+  }
+  /** `speed` em unidades/s: anima as patas ao andar. */
+  setMoving(speed: number): void { this.moving = Math.min(1, speed / 4); }
+  animate(dt: number) {
+    this.t += dt;
+    this.body.position.y = Math.sin(this.t * 1.5) * 0.03;
+    this.legs.forEach((l) => { l.hip.rotation.x = Math.sin(this.t * 9 + l.phase) * 0.35 * this.moving + Math.sin(this.t + l.phase) * 0.03; });
+  }
+}
+
+/** Tico: gafanhoto alegre, de pernas traseiras grandes. */
+class GrasshopperNpc implements NpcModel {
+  readonly root: TransformNode; readonly meshes: AbstractMesh[] = []; hover = 0;
+  private ants: TransformNode[] = []; private hind: TransformNode[] = []; private t = Math.random() * 6; private body: TransformNode;
+  constructor(scene: Scene, mats: Materials) {
+    this.root = new TransformNode('tico', scene);
+    this.body = new TransformNode('ticoBody', scene); this.body.parent = this.root;
+    const skin = pbr(scene, 'ghSkin', new Color3(0.45, 0.72, 0.15), 0.4), belly = pbr(scene, 'ghBelly', new Color3(0.85, 0.85, 0.35), 0.5);
+    const add = (m: Mesh, mat: Mesh['material'], parent: TransformNode = this.body) => { m.material = mat; m.parent = parent; this.meshes.push(m); return m; };
+    add(sphere(scene, 1, 0.7, 0.6, 2.4, 0, 1.3, -0.5), skin);
+    add(sphere(scene, 1, 0.6, 0.4, 2.0, 0, 1.05, -0.5), belly);
+    add(sphere(scene, 1, 0.75, 0.9, 0.95, 0, 1.55, 0.95), skin);
+    for (const sx of [-1, 1]) {
+      add(sphere(scene, 0.42, 1, 1.2, 0.9, sx * 0.3, 1.8, 1.2), mats.white);
+      add(sphere(scene, 0.22, 1, 1, 0.8, sx * 0.3, 1.8, 1.38), mats.black);
+      const a = new TransformNode('a', scene); a.parent = this.body; a.position.set(sx * 0.15, 2.0, 1.2); a.rotation.set(-0.5, sx * -0.3, 0);
+      const st = MeshBuilder.CreateCylinder('as', { height: 1.6, diameter: 0.05, tessellation: 5 }, scene); st.position.y = 0.8; add(st, skin, a); this.ants.push(a);
+      const hip = new TransformNode('hh', scene); hip.parent = this.body; hip.position.set(sx * 0.4, 1.3, -1.0); hip.rotation.set(0.0, 0, sx * 0.2);
+      const th = MeshBuilder.CreateCylinder('th', { height: 1.5, diameter: 0.26, tessellation: 7 }, scene); th.rotation.x = Math.PI / 2 - 0.5; th.position.set(0, 0.35, -0.65); add(th, skin, hip);
+      const sh = MeshBuilder.CreateCylinder('sh', { height: 1.6, diameter: 0.1, tessellation: 6 }, scene); sh.position.set(0, -0.1, -1.35); sh.rotation.x = 0.4; add(sh, skin, hip); this.hind.push(hip);
+      for (const z of [0.5, 0.0]) { const l = MeshBuilder.CreateCylinder('l', { height: 1.0, diameter: 0.08, tessellation: 5 }, scene); l.position.set(sx * 0.45, 0.6, z); l.rotation.z = sx * 0.2; add(l, skin); }
+    }
+    this.root.scaling.setAll(1.1);
+  }
+  animate(dt: number) {
+    this.t += dt;
+    this.body.position.y = Math.abs(Math.sin(this.t * 2)) * 0.05;
+    this.ants.forEach((a, i) => { a.rotation.x = -0.5 + Math.sin(this.t * 1.8 + i * 2) * 0.2; });
+    this.hind.forEach((h, i) => { h.rotation.x = Math.sin(this.t * 1.2 + i) * 0.05; });
+  }
+}
+
 export function createNpcModel(kind: NpcKind, scene: Scene, mats: Materials): NpcModel {
   switch (kind) {
     case 'ant': return new AntNpc(scene, mats);
     case 'butterfly': return new ButterflyNpc(scene, mats);
     case 'beetle': return new BeetleNpc(scene, mats);
+    case 'grasshopper': return new GrasshopperNpc(scene, mats);
+    case 'spider': return new SpiderModel(scene, mats, false);
     default: return new SnailNpc(scene, mats);
   }
 }

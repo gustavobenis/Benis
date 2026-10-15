@@ -14,6 +14,8 @@ export class Level1 extends LevelBase {
     quests: LEVEL1_QUESTS, mainQuest: 'jardim',
     totals: { dew: D.PICKUPS.filter((p) => p.kind === 'dew').length, seed: D.PICKUPS.filter((p) => p.kind === 'seed').length },
     fog: { color: [0.76, 0.84, 0.66], density: 0.0105 },
+    // Manhã quente e dourada
+    light: { dir: [-0.45, -0.62, 0.55], sun: [1, 0.9, 0.7], sunI: 3.4, sky: [0.85, 0.95, 1], ground: [0.3, 0.38, 0.2], hemiI: 0.72, exposure: 1.15, contrast: 1.18, saturation: 12 },
     shafts: [[-6, -80], [14, -62], [-12, -38], [8, 20], [-2, 62], [10, 86]],
     springs: [[D.SHELTER.x + 12, 0.5, D.SHELTER.z + 2]],
     pickDialogue: (npc, q) => pickDialogue(npc, q),

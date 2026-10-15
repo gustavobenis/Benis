@@ -21,6 +21,8 @@ interface Base {
   /** Impede a passagem horizontal por baixo? (padrão: sim quando yBase < altura do corpo) */
   id?: string;
   move?: Mover;
+  /** Cogumelo-trampolim: ao pousar, lança para cima com esta velocidade. */
+  bounce?: number;
 }
 export interface CylinderShape extends Base { kind: 'cyl'; x: number; z: number; r: number }
 export interface BoxShape extends Base { kind: 'box'; x: number; z: number; hx: number; hz: number; yaw: number }
@@ -28,7 +30,7 @@ export type Shape = CylinderShape | BoxShape;
 
 export interface WaterRect { minX: number; maxX: number; minZ: number; maxZ: number; flowX: number; flowZ: number }
 
-export interface Zone { id: string; x: number; z: number; r: number; type: 'puddle' | 'checkpoint' | 'goal' | 'glide' }
+export interface Zone { id: string; x: number; z: number; r: number; type: 'puddle' | 'checkpoint' | 'goal' | 'glide' | 'web' }
 
 export interface Body {
   x: number; y: number; z: number; // y = pés
@@ -130,8 +132,8 @@ export class CollisionWorld {
    * `jump` dispara um salto se estiver no chão; `glide` reduz a queda.
    * Retorna eventos úteis ao jogo (aterrissagem, salto).
    */
-  step(b: Body, dt: number, wishX: number, wishZ: number, opts: { accel: number; jump: boolean; jumpSpeed: number; glide: boolean; climb: boolean; climbSpeed: number }): { landed: boolean; jumped: boolean } {
-    const ev = { landed: false, jumped: false };
+  step(b: Body, dt: number, wishX: number, wishZ: number, opts: { accel: number; jump: boolean; jumpSpeed: number; glide: boolean; climb: boolean; climbSpeed: number }): { landed: boolean; jumped: boolean; bounced: boolean } {
+    const ev = { landed: false, jumped: false, bounced: false };
     // Carregado por plataforma móvel
     if (b.grounded && b.support?.move) { b.x += b.support.move.dx; b.z += b.support.move.dz; }
 
@@ -194,6 +196,8 @@ export class CollisionWorld {
         b.y = g.y; b.vy = 0; b.grounded = true; b.surface = g.surface; b.support = g.shape;
       }
     }
+    // Trampolim
+    if (b.grounded && !b.climbing && b.support?.bounce) { b.vy = b.support.bounce; b.grounded = false; b.support = null; ev.bounced = true; }
     return ev;
   }
 

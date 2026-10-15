@@ -16,6 +16,8 @@ export class Level2 extends LevelBase {
     quests: LEVEL2_QUESTS, mainQuest: 'rio',
     totals: { dew: D.PICKUPS.filter((p) => p.kind === 'dew').length, seed: D.PICKUPS.filter((p) => p.kind === 'seed').length, leaf: 4, crystal: 2, flower: 2, photo: 1 },
     fog: { color: [0.72, 0.85, 0.84], density: 0.0115 },
+    // Dia claro e fresco junto à água
+    light: { dir: [-0.3, -0.85, 0.35], sun: [1, 0.97, 0.88], sunI: 3.2, sky: [0.8, 0.95, 1], ground: [0.25, 0.4, 0.35], hemiI: 0.8, exposure: 1.12, contrast: 1.12, saturation: 8 },
     shafts: [[-8, -80], [16, -56], [-10, -30], [4, 44], [-6, 74]],
     springs: [[0, 0.5, 10], [-30, 0.5, 10], [30, 0.5, 10]],
     pickDialogue: (npc, q, flags) => pickRioDialogue(npc, q, flags),

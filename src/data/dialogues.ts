@@ -123,3 +123,45 @@ export function pickRioDialogue(npc: string, q: QuestLog, flags: Set<string>): D
   if (!flags.has('metBeto')) return R.beto_rescue;
   return R.beto_after;
 }
+
+const F: Record<string, DialogueDef> = {
+  tico_intro: {
+    id: 'tico_intro', speaker: 'Tico',
+    lines: [
+      'Pulo, pulo, pulo! Olha só quem chegou à floresta! Eu sou o Tico, o gafanhoto mais divertido da mata!',
+      'Aqui é escuro e cheio de desafios. Os troncos viram túneis, as raízes viram degraus… e os cogumelos cor-de-rosa são trampolins!',
+      'Cuidado com a aranha-caçadora, de olhos vermelhos. Ela patrulha o centro da floresta e enxerga bem de frente. Esconda-se debaixo dos troncos!',
+      'Para passar pela muralha de teia, acenda o altar de cristais. Há três cristais de luz lá no alto, quique nos cogumelos para alcançá-los!',
+    ],
+    onEnd: ['talk:tico'],
+  },
+  tico_again: { id: 'tico_again', speaker: 'Tico', lines: ['Três cristais de luz, lá no alto! Quique nos cogumelos cor-de-rosa e use as asas para alcançar as folhas.'] },
+  tico_altar: { id: 'tico_altar', speaker: 'Tico', lines: ['Com os cristais, vá até o altar no meio da floresta, depois da aranha-caçadora. Ele acende e rompe a teia!'] },
+  tico_after: { id: 'tico_after', speaker: 'Tico', lines: ['Você é demais, Marieta! Vá até a clareira, Dona Olívia espera por você.'] },
+  olivia_early: { id: 'olivia_early', speaker: 'Dona Olívia', lines: ['Estou ouvindo seus passos, pequena. Venha até a clareira, a teia já não impede.'] },
+  olivia_intro: {
+    id: 'olivia_intro', speaker: 'Dona Olívia',
+    lines: [
+      'Bem-vinda, minha querida. Eu sou a Dona Olívia. Cuido desta floresta e de quem passa por ela.',
+      'Não se assuste com minha aparência: nem toda aranha é caçadora. Minhas teias protegem a mata das tempestades.',
+      'Você enfrentou a floresta com coragem e astúcia. Há uma colônia depois daqui que precisa de ajuda.',
+      'Siga em frente. Beto e os outros vão estar com você.',
+    ],
+    onEnd: ['talk:olivia'],
+  },
+  olivia_after: { id: 'olivia_after', speaker: 'Dona Olívia', lines: ['A colônia espera por você, Marieta. Vá com cuidado e confie nos amigos.'] },
+};
+
+/** Diálogos da Fase 3 conforme o estado das missões. */
+export function pickForestDialogue(npc: string, q: QuestLog): DialogueDef {
+  const st = q.state('floresta');
+  if (npc === 'tico') {
+    if (st.status === 'active' && st.objective === 0) return F.tico_intro;
+    if (st.status === 'active' && st.objective === 1) return F.tico_again;
+    if (st.status === 'active' && st.objective === 2) return F.tico_altar;
+    return F.tico_after;
+  }
+  if (st.status === 'active' && st.objective === 4) return F.olivia_intro;
+  if (st.status === 'active' && st.objective < 4) return F.olivia_early;
+  return F.olivia_after;
+}

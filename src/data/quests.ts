@@ -44,3 +44,24 @@ export const LEVEL2_QUESTS: QuestDef[] = [
     objectives: [{ id: 'cristais', text: 'Encontre os cristais naturais do rio', type: 'collect', target: 'crystal', count: 2 }],
   },
 ];
+
+/** Missões da Fase 3 — A Floresta (Desafios). */
+export const LEVEL3_QUESTS: QuestDef[] = [
+  {
+    id: 'floresta',
+    title: 'Atravessar a floresta',
+    objectives: [
+      { id: 'tico', text: 'Converse com Tico, o gafanhoto', type: 'talk', target: 'tico' },
+      { id: 'cristais', text: 'Colete os cristais de luz nas alturas', type: 'collect', target: 'crystal', count: 3 },
+      { id: 'altar', text: 'Acenda o altar de cristais para romper a teia', type: 'interact', target: 'altar' },
+      { id: 'clareira', text: 'Chegue à clareira de Dona Olívia', type: 'reach', target: 'clearing' },
+      { id: 'olivia', text: 'Converse com Dona Olívia, a aranha protetora', type: 'talk', target: 'olivia' },
+    ],
+  },
+  {
+    id: 'cogumelos',
+    title: 'Flores da penumbra',
+    optional: true,
+    objectives: [{ id: 'flores', text: 'Encontre as flores raras da floresta', type: 'collect', target: 'flower', count: 2 }],
+  },
+];
