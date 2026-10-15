@@ -229,12 +229,48 @@ ok(await until("g.quests.currentObjective('floresta')?.id === 'olivia'", 15000),
 await talk(0, 82);
 ok(await waitState('complete'), 'falar com Dona Olívia conclui a Fase 3');
 await page.screenshot({ path: OUT + '19-fase3-vitoria.png' });
-ok(!(await page.isVisible('#complete-next')), 'Fase 3 é a última disponível: sem botão de próxima fase');
+ok(await page.isVisible('#complete-next'), 'Fase 3 concluída oferece a Fase 4');
+
+console.log('7c. Fase 4 — A Colônia');
+await page.click('#complete-next');
+ok(await waitState('playing'), 'Próxima fase inicia a Fase 4');
+ok((await G('g.level.info.id')) === 4, 'Fase 4 carregada');
+await prep();
+await G('(g.bird.nextAt = 1e9, true)');
+const freezeMantis = (x, z, yaw) => G(`(g.level.patrol.x = ${x}, g.level.patrol.z = ${z}, g.level.patrol.yaw = ${yaw}, g.level.patrol.wait = 1e9, true)`);
+await freezeMantis(-50, 90, 0);
+await talk(8, -79);
+ok(await until("g.quests.currentObjective('colonia')?.id === 'sementes'", 10000), 'Lino pede sementes para o celeiro');
+await page.screenshot({ path: OUT + '20-fase4-lino.png' });
+// Louva-a-deus: coberto sob o túnel não é visto; exposto à frente dele, é
+await freezeMantis(-6, -44, 0);
+await tp(-6, 0, -26);
+await sleep(4000);
+ok((await G('g.hearts')) === 3, 'sob o túnel de terra, o louva-a-deus não vê Marieta');
+await freezeMantis(40, -70, 0);
+await tp(40, 0, -52);
+ok(await until('g.hearts === 2', 30000), 'exposta, o louva-a-deus vê Marieta e custa um coração');
+await until("document.getElementById('fade').classList.contains('on') === false", 5000);
+await freezeMantis(-50, 90, 0);
+const seeds = await G("g.level.pickups.filter(p => p.def.kind === 'seed').map(p => [p.def.x, p.def.y, p.def.z])");
+for (let i = 0; i < seeds.length; i++) { const [x, y, z] = seeds[i]; await tp(x, y, z); await until(`g.inventory.count('seed') >= ${i + 1}`, 8000); }
+ok((await G("g.inventory.count('seed')")) === 4, 'recolheu 4 sementes (inclusive no topo do formigueiro)');
+await tp(0, 0, 44.5); await until("!document.getElementById('prompt').classList.contains('hidden')");
+await page.keyboard.press('e');
+ok(await until('g.level.gate.open'), 'celeiro abastecido: a barricada se abre');
+await sleep(2500);
+await page.screenshot({ path: OUT + '21-fase4-celeiro.png' });
+await tp(0, 0, 78);
+ok(await until("g.quests.currentObjective('colonia')?.id === 'rainha'", 15000), 'chegou à câmara da Rainha');
+await talk(0, 84);
+ok(await waitState('complete'), 'falar com a Rainha conclui a Fase 4');
+await page.screenshot({ path: OUT + '22-fase4-vitoria.png' });
+ok(!(await page.isVisible('#complete-next')), 'Fase 4 é a última disponível: sem botão de próxima fase');
 
 console.log('8. Rio: correnteza, resgate e coração');
 await page.click('#complete-menu');
 ok(await waitState('menu'), 'volta ao menu');
-ok((await page.locator('.phase:not(.locked)').count()) === 3, 'seleção de fases mostra 3 fases liberadas');
+ok((await page.locator('.phase:not(.locked)').count()) === 4, 'seleção de fases mostra 4 fases liberadas');
 page.once('dialog', (d) => d.accept());
 await page.locator('.phase').nth(1).click();
 ok(await waitState('playing'), 'iniciar a Fase 2 pela seleção');

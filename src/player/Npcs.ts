@@ -3,7 +3,7 @@ import type { AbstractMesh, Scene } from '@babylonjs/core';
 import type { Materials } from '../levels/Materials';
 import { SnailModel } from './Marieta';
 
-export type NpcKind = 'snail' | 'ant' | 'butterfly' | 'beetle' | 'grasshopper' | 'spider';
+export type NpcKind = 'snail' | 'ant' | 'butterfly' | 'beetle' | 'grasshopper' | 'spider' | 'queen';
 
 /** Contrato comum dos personagens secundários. */
 export interface NpcModel {
@@ -30,18 +30,22 @@ class SnailNpc implements NpcModel {
 }
 
 /** Lino: formiga trabalhadora com capacete amarelo. */
-class AntNpc implements NpcModel {
+export class AntNpc implements NpcModel {
   readonly root: TransformNode; readonly meshes: AbstractMesh[] = []; hover = 0;
   private legs: TransformNode[] = []; private ants: TransformNode[] = []; private t = Math.random() * 6; private body: TransformNode;
-  constructor(scene: Scene, mats: Materials) {
-    this.root = new TransformNode('lino', scene);
+  constructor(scene: Scene, mats: Materials, queen = false) {
+    this.root = new TransformNode(queen ? 'rainha' : 'lino', scene);
     this.body = new TransformNode('linoBody', scene); this.body.parent = this.root;
     const skin = pbr(scene, 'antSkin', new Color3(0.32, 0.12, 0.08), 0.35), hat = pbr(scene, 'hat', new Color3(0.98, 0.78, 0.15), 0.45);
     const add = (m: Mesh, mat: Mesh['material'], parent: TransformNode = this.body) => { m.material = mat; m.parent = parent; this.meshes.push(m); return m; };
-    add(sphere(scene, 1, 0.9, 0.8, 1.4, 0, 0.9, -1.2), skin);   // abdômen
+    add(sphere(scene, 1, queen ? 1.5 : 0.9, queen ? 1.3 : 0.8, queen ? 2.4 : 1.4, 0, queen ? 1.1 : 0.9, queen ? -1.6 : -1.2), skin);   // abdômen
     add(sphere(scene, 1, 0.55, 0.55, 0.8, 0, 0.9, -0.2), skin);  // tórax
     add(sphere(scene, 1, 0.85, 0.8, 0.8, 0, 1.15, 0.65), skin);  // cabeça
-    add(sphere(scene, 0.9, 1, 0.5, 1, 0, 1.6, 0.62), hat);       // capacete
+    if (queen) {
+      const gold = pbr(scene, 'gold', new Color3(0.95, 0.75, 0.2), 0.25);
+      const ring = MeshBuilder.CreateTorus('crown', { diameter: 0.8, thickness: 0.12, tessellation: 20 }, scene); ring.position.set(0, 1.62, 0.62); add(ring, gold);
+      for (let k = 0; k < 5; k++) { const a = (k / 5) * Math.PI * 2; const sp = MeshBuilder.CreateCylinder('cs', { height: 0.35, diameterTop: 0, diameterBottom: 0.16, tessellation: 6 }, scene); sp.position.set(Math.cos(a) * 0.4, 1.82, 0.62 + Math.sin(a) * 0.4); add(sp, gold); }
+    } else add(sphere(scene, 0.9, 1, 0.5, 1, 0, 1.6, 0.62), hat);       // capacete
     for (const sx of [-1, 1]) {
       add(sphere(scene, 0.34, 1, 1.1, 0.7, sx * 0.22, 1.2, 1.0), mats.white);
       add(sphere(scene, 0.17, 1, 1, 0.7, sx * 0.22, 1.2, 1.12), mats.black);
@@ -52,10 +56,12 @@ class AntNpc implements NpcModel {
       const hip = new TransformNode('h', scene); hip.parent = this.body; hip.position.set(side * 0.22, 0.75, z); hip.rotation.z = side * 0.9;
       const l = MeshBuilder.CreateCylinder('l', { height: 0.9, diameter: 0.08, tessellation: 6 }, scene); l.position.y = -0.45; add(l, skin, hip); this.legs.push(hip);
     });
-    this.root.scaling.setAll(1.2);
+    this.root.scaling.setAll(queen ? 1.7 : 1.2);
   }
+  /** `speed` > 0 acelera as pernas (formigas operárias andando). */
+  walk = 0;
   animate(dt: number) {
-    this.t += dt;
+    this.t += dt * (1 + this.walk * 3);
     this.body.position.y = Math.abs(Math.sin(this.t * 2.2)) * 0.05;
     this.legs.forEach((l, i) => { l.rotation.x = Math.sin(this.t * 3 + i) * 0.12; });
     this.ants.forEach((a, i) => { a.rotation.x = -0.8 + Math.sin(this.t * 1.6 + i) * 0.15; });
@@ -177,6 +183,42 @@ export class SpiderModel implements NpcModel {
   }
 }
 
+/** Louva-a-deus: caçador alto e discreto, de braços raptoriais. */
+export class MantisModel implements NpcModel {
+  readonly root: TransformNode; readonly meshes: AbstractMesh[] = []; hover = 0;
+  private legs: { hip: TransformNode; phase: number }[] = []; private arms: TransformNode[] = []; private t = Math.random() * 6; private moving = 0; private body: TransformNode;
+  constructor(scene: Scene, mats: Materials) {
+    this.root = new TransformNode('mantis', scene);
+    this.body = new TransformNode('mBody', scene); this.body.parent = this.root;
+    const skin = pbr(scene, 'mSkin', new Color3(0.55, 0.8, 0.25), 0.4), dark = pbr(scene, 'mDark', new Color3(0.25, 0.4, 0.1), 0.5);
+    const add = (m: Mesh, mat: Mesh['material'], parent: TransformNode = this.body) => { m.material = mat; m.parent = parent; this.meshes.push(m); return m; };
+    add(sphere(scene, 1, 0.8, 0.7, 3.4, 0, 2.2, -1.4), skin);
+    const th = add(sphere(scene, 1, 0.55, 0.55, 2.6, 0, 2.9, 0.7), skin); th.rotation.x = -0.5;
+    add(sphere(scene, 1, 0.9, 0.7, 0.9, 0, 3.9, 1.5), skin);
+    for (const sx of [-1, 1]) {
+      add(sphere(scene, 0.55, 1, 1.2, 1, sx * 0.5, 4.0, 1.55), mats.white);
+      add(sphere(scene, 0.25, 1, 1, 0.8, sx * 0.5, 4.0, 1.78), mats.black);
+      const arm = new TransformNode('arm', scene); arm.parent = this.body; arm.position.set(sx * 0.35, 3.2, 1.0); arm.rotation.x = -0.6;
+      const up = MeshBuilder.CreateCylinder('au', { height: 1.7, diameter: 0.22, tessellation: 6 }, scene); up.position.set(0, 0, 0.4); up.rotation.x = Math.PI / 2 - 0.2; add(up, skin, arm);
+      const lo = MeshBuilder.CreateCylinder('al', { height: 1.5, diameterTop: 0.05, diameterBottom: 0.2, tessellation: 6 }, scene); lo.position.set(0, -0.6, 1.2); lo.rotation.x = 0.3; add(lo, dark, arm);
+      this.arms.push(arm);
+      for (const z of [0.0, -1.4]) {
+        const hip = new TransformNode('mh', scene); hip.parent = this.body; hip.position.set(sx * 0.45, 2.0, z); hip.rotation.z = sx * 0.7;
+        const l = MeshBuilder.CreateCylinder('ml', { height: 2.2, diameter: 0.1, tessellation: 5 }, scene); l.position.y = -1.1; add(l, skin, hip);
+        this.legs.push({ hip, phase: (z === 0 ? 0 : Math.PI) + (sx > 0 ? Math.PI : 0) });
+      }
+    }
+    this.root.scaling.setAll(1.15);
+  }
+  setMoving(speed: number): void { this.moving = Math.min(1, speed / 4); }
+  animate(dt: number) {
+    this.t += dt;
+    this.body.position.y = Math.sin(this.t * 2.4) * 0.05 * (0.3 + this.moving);
+    this.arms.forEach((a, i) => { a.rotation.x = -0.6 + Math.sin(this.t * 1.5 + i) * 0.12; });
+    this.legs.forEach((l) => { l.hip.rotation.x = Math.sin(this.t * 6 + l.phase) * 0.4 * this.moving; });
+  }
+}
+
 /** Tico: gafanhoto alegre, de pernas traseiras grandes. */
 class GrasshopperNpc implements NpcModel {
   readonly root: TransformNode; readonly meshes: AbstractMesh[] = []; hover = 0;
@@ -212,6 +254,7 @@ class GrasshopperNpc implements NpcModel {
 export function createNpcModel(kind: NpcKind, scene: Scene, mats: Materials): NpcModel {
   switch (kind) {
     case 'ant': return new AntNpc(scene, mats);
+    case 'queen': return new AntNpc(scene, mats, true);
     case 'butterfly': return new ButterflyNpc(scene, mats);
     case 'beetle': return new BeetleNpc(scene, mats);
     case 'grasshopper': return new GrasshopperNpc(scene, mats);

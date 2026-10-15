@@ -165,3 +165,45 @@ export function pickForestDialogue(npc: string, q: QuestLog): DialogueDef {
   if (st.status === 'active' && st.objective < 4) return F.olivia_early;
   return F.olivia_after;
 }
+
+const C: Record<string, DialogueDef> = {
+  lino_intro: {
+    id: 'lino_intro', speaker: 'Lino',
+    lines: [
+      'Marieta! Você chegou à nossa colônia! Eu disse que nos reencontraríamos.',
+      'Mas chegou numa hora ruim: um louva-a-deus está rondando o formigueiro e nossos celeiros estão quase vazios.',
+      'Ele enxerga bem quem se move à vista e tem um alcance enorme. Fique debaixo dos túneis e das folhas, e só atravesse quando ele virar as costas.',
+      'Precisamos de quatro sementes para reabastecer o celeiro central. Com ele cheio, abrimos a barricada e você chega à câmara da Rainha.',
+    ],
+    onEnd: ['talk:lino'],
+  },
+  lino_again: { id: 'lino_again', speaker: 'Lino', lines: ['Quatro sementes para o celeiro! Procure perto das pedras e sob os cogumelos. E cuidado com o louva-a-deus!'] },
+  lino_granary: { id: 'lino_granary', speaker: 'Lino', lines: ['Já tem as sementes! Leve-as ao celeiro, ao pé do formigueiro grande.'] },
+  lino_after: { id: 'lino_after', speaker: 'Lino', lines: ['A barricada está aberta! A Rainha está esperando você, Marieta.'] },
+  rainha_early: { id: 'rainha_early', speaker: 'Rainha Formiga', lines: ['Eu sinto sua chegada, pequena. Venha até a minha câmara, quando o caminho estiver livre.'] },
+  rainha_intro: {
+    id: 'rainha_intro', speaker: 'Rainha Formiga',
+    lines: [
+      'Então é você a joaninha que abasteceu o nosso celeiro. A colônia inteira lhe agradece.',
+      'O louva-a-deus não age por maldade, apenas por fome. Mas ele ameaça os meus filhos, e uma tempestade se aproxima.',
+      'Vai ser a maior prova que a mata já viu. Quando ela chegar, precisaremos de todos: você, Beto e todos os amigos.',
+      'Vá em frente. Que as folhas lhe sirvam de abrigo.',
+    ],
+    onEnd: ['talk:rainha'],
+  },
+  rainha_after: { id: 'rainha_after', speaker: 'Rainha Formiga', lines: ['A tempestade está chegando. Prepare-se, Marieta. A colônia estará com você.'] },
+};
+
+/** Diálogos da Fase 4 conforme o estado das missões. */
+export function pickColonyDialogue(npc: string, q: QuestLog): DialogueDef {
+  const st = q.state('colonia');
+  if (npc === 'lino') {
+    if (st.status === 'active' && st.objective === 0) return C.lino_intro;
+    if (st.status === 'active' && st.objective === 1) return C.lino_again;
+    if (st.status === 'active' && st.objective === 2) return C.lino_granary;
+    return C.lino_after;
+  }
+  if (st.status === 'active' && st.objective === 4) return C.rainha_intro;
+  if (st.status === 'active' && st.objective < 4) return C.rainha_early;
+  return C.rainha_after;
+}

@@ -11,6 +11,7 @@ import { Level1 } from '../levels/Level1';
 import { Materials } from '../levels/Materials';
 import { Level2 } from '../levels/Level2';
 import { Level3 } from '../levels/Level3';
+import { Level4 } from '../levels/Level4';
 import { MarietaModel } from '../player/Marieta';
 import { BirdShadow } from './BirdShadow';
 import { QuestLog, type QuestNotice } from '../systems/Quests';
@@ -32,6 +33,7 @@ const LEVELS: Record<number, (scene: Scene, grass: number) => LevelBase> = {
   1: (s, g) => new Level1(s, g),
   2: (s, g) => new Level2(s, g),
   3: (s, g) => new Level3(s, g),
+  4: (s, g) => new Level4(s, g),
 };
 
 /** Habilidades aprendidas na Fase 1 (Tito) valem para as fases seguintes. */
@@ -255,9 +257,10 @@ export class Game {
     const OUT: Record<number, { title: string; text: string; note: string }> = {
       1: { title: 'Jardim concluído!', text: 'Marieta atravessou o Jardim das Gotas e encontrou um abrigo seguro. A grande aventura continua rio adiante…', note: 'Fase 2 liberada: O Rio' },
       2: { title: 'Fase concluída!', text: 'Marieta e Beto se encontraram à beira do rio. Adiante, a floresta escura espera por eles.', note: 'Fase 3 liberada: A Floresta' },
-      3: { title: 'Obrigado por jogar!', text: 'Dona Olívia abençoou a travessia. A Colônia (Fase 4) precisa de ajuda — mas isso é na próxima parte da aventura.', note: 'Fim da demo atual — as fases 4 a 8 virão em seguida.' },
+      3: { title: 'Fase concluída!', text: 'Dona Olívia abençoou a travessia. Adiante, o formigueiro está em perigo.', note: 'Fase 4 liberada: A Colônia' },
+      4: { title: 'Obrigado por jogar!', text: 'A Rainha agradeceu à joaninha. Uma grande tempestade se aproxima — mas essa é a próxima parte da aventura.', note: 'Fim da demo atual — as fases 5 a 8 virão em seguida.' },
     };
-    const o = OUT[id] ?? OUT[3];
+    const o = OUT[id] ?? OUT[4];
     this.ui.complete({ title: o.title, text: o.text, stats: `${stats}<br><small>${o.note}</small>`, next: hasNext, final: !hasNext });
     this.ui.setTouch(false); this.ui.prompt(null); void this.flushSave();
   }

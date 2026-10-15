@@ -1,4 +1,4 @@
-import { Color3, DynamicTexture, Mesh, MeshBuilder, ParticleSystem, PointLight, StandardMaterial, Texture, TransformNode, Vector3 } from '@babylonjs/core';
+import { Color3, DynamicTexture, Mesh, MeshBuilder, ParticleSystem, PointLight, StandardMaterial, Texture, Vector3 } from '@babylonjs/core';
 import type { Scene } from '@babylonjs/core';
 import { Grass } from './Grass';
 import { LevelBase, type Interaction, type LevelHost, type LevelInfo, type MapData } from './LevelBase';
@@ -105,20 +105,6 @@ export class Level3 extends LevelBase {
     this.world.zones.push({ id: w.id, x: w.x, z: w.z, r: w.r, type: 'web' });
     const d = MeshBuilder.CreateDisc('web', { radius: w.r, tessellation: 32 }, this.scene);
     d.rotation.x = Math.PI / 2; d.position.set(w.x, 0.08, w.z); d.material = this.webMaterial(0.85); d.isPickable = false;
-  }
-
-  /** Tronco suspenso sobre dois apoios: forma um túnel de sombra por baixo. */
-  private addRaisedLog(l: { x: number; z: number; hx: number; hz: number; yaw: number; yBase: number; yTop: number }): void {
-    const node = new TransformNode('rlog', this.scene); node.position.set(l.x, (l.yBase + l.yTop) / 2, l.z); node.rotation.y = l.yaw;
-    const log = MeshBuilder.CreateCylinder('rl', { height: l.hz * 2, diameter: l.hx * 2, tessellation: 18 }, this.scene);
-    log.rotation.x = Math.PI / 2; log.scaling.z = (l.yTop - l.yBase) / (l.hx * 2); log.parent = node; log.material = this.mats.bark; this.casters.push(log);
-    this.addShape({ kind: 'box', x: l.x, z: l.z, hx: l.hx * 0.85, hz: l.hz, yBase: l.yBase, yTop: l.yTop, yaw: -l.yaw, surface: 'wood' });
-    for (const sgn of [-1, 1]) {
-      const lx = l.x + Math.sin(l.yaw) * sgn * (l.hz - 2.5), lz = l.z + Math.cos(l.yaw) * sgn * (l.hz - 2.5);
-      const leg = MeshBuilder.CreateCylinder('leg', { height: l.yBase + 0.5, diameterTop: 2.6, diameterBottom: 3.8, tessellation: 12 }, this.scene);
-      leg.position.set(lx, (l.yBase + 0.5) / 2, lz); leg.material = this.mats.bark; this.casters.push(leg);
-      this.addShape({ kind: 'cyl', x: lx, z: lz, r: 1.6, yBase: 0, yTop: l.yBase + 0.2, surface: 'wood' });
-    }
   }
 
   private buildGate(): void {

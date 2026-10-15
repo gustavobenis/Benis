@@ -65,3 +65,24 @@ export const LEVEL3_QUESTS: QuestDef[] = [
     objectives: [{ id: 'flores', text: 'Encontre as flores raras da floresta', type: 'collect', target: 'flower', count: 2 }],
   },
 ];
+
+/** Missões da Fase 4 — A Colônia (Em Perigo). */
+export const LEVEL4_QUESTS: QuestDef[] = [
+  {
+    id: 'colonia',
+    title: 'Salvar a colônia',
+    objectives: [
+      { id: 'lino', text: 'Converse com Lino, na entrada da colônia', type: 'talk', target: 'lino' },
+      { id: 'sementes', text: 'Recolha sementes para o celeiro', type: 'collect', target: 'seed', count: 4 },
+      { id: 'celeiro', text: 'Abasteça o celeiro para abrir a barricada', type: 'interact', target: 'granary' },
+      { id: 'camara', text: 'Chegue à câmara da Rainha', type: 'reach', target: 'chamber' },
+      { id: 'rainha', text: 'Converse com a Rainha Formiga', type: 'talk', target: 'rainha' },
+    ],
+  },
+  {
+    id: 'cristais_col',
+    title: 'Tesouros do formigueiro',
+    optional: true,
+    objectives: [{ id: 'cr', text: 'Encontre os cristais escondidos na colônia', type: 'collect', target: 'crystal', count: 2 }],
+  },
+];
