@@ -118,6 +118,7 @@ export class Game {
       onUnlock: () => { if (this.state === 'playing' && !this.input.usingTouch) this.pause(); },
     });
     this.input.bindTouch(this.ui.touchElements());
+    this.ui.bindFullscreen();
     if (matchMedia('(pointer: coarse)').matches) { this.input.usingTouch = true; }
 
     this.loadLevel(saved && saved.level in LEVELS ? saved.level : 1);

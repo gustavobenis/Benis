@@ -74,6 +74,16 @@ export class UI {
   loadError(msg: string): void { const e = $('loaderr'); e.textContent = msg; e.classList.remove('hidden'); }
   enableContinue(on: boolean): void { ($('btn-continue') as HTMLButtonElement).disabled = !on; }
   applyScale(): void { document.documentElement.style.setProperty('--ui', String(this.settings().uiScale)); }
+  bindFullscreen(): void {
+    const b = $('b-full'); const doc = document as Document & { webkitFullscreenElement?: Element };
+    const root = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => void };
+    if (!root.requestFullscreen && !root.webkitRequestFullscreen) { b.classList.add('hidden'); return; }
+    b.addEventListener('pointerdown', (e) => { e.stopPropagation(); });
+    b.addEventListener('click', () => {
+      if (doc.fullscreenElement || doc.webkitFullscreenElement) void document.exitFullscreen?.();
+      else { void (root.requestFullscreen?.() ?? root.webkitRequestFullscreen?.()); (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('landscape').catch(() => {}); }
+    });
+  }
   fade(on: boolean): void { $('fade').classList.toggle('on', on); }
 
   touchElements() {

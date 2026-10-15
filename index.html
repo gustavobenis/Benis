@@ -37,14 +37,17 @@
 
       <div id="hud" class="hidden">
         <div id="hearts" aria-label="Vida"></div>
+        <div id="hud-left">
         <div id="objective" class="panel"><i class="coin"></i><div><small id="obj-quest"></small><b id="obj-text"></b><div class="pbar hidden" id="obj-pbar"><i id="obj-bar"></i></div></div></div>
+        <div id="items" class="panel"></div>
+        </div>
         <canvas id="minimap" width="150" height="150" aria-label="Minimapa"></canvas>
         <div id="cam-label" class="chip"></div>
         <div id="top-btns">
           <button id="b-camera" class="icon" aria-label="Alternar câmera">🎥</button>
+          <button id="b-full" class="icon" aria-label="Tela cheia">⛶</button>
           <button id="b-pause" class="icon" aria-label="Pausar">⏸</button>
         </div>
-        <div id="items" class="panel"></div>
         <div id="prompt" class="panel hidden"></div>
         <div id="hint" class="panel hidden"></div>
         <div id="toast" class="panel hidden"></div>

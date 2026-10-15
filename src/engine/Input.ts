@@ -113,6 +113,7 @@ export class Input {
         el.setPointerCapture(e.pointerId);
         this.touchHeld.add(name); this.touchPressed.add(name);
         el.classList.add('down');
+        if (name === 'jump' || name === 'interact') navigator.vibrate?.(12);
       });
       const up = () => { this.touchHeld.delete(name); el.classList.remove('down'); };
       el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
