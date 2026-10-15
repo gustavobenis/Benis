@@ -25,8 +25,9 @@ import { SaveManager, type SaveData } from '../systems/Save';
 import { DEFAULT_SETTINGS, type Settings } from '../systems/Settings';
 import { UI, READY_PHASES } from '../ui/UI';
 import { drawMap } from '../ui/MiniMap';
+import { Trailer } from './Trailer';
 
-type State = 'loading' | 'menu' | 'playing' | 'dialogue' | 'paused' | 'complete';
+type State = 'loading' | 'splash' | 'trailer' | 'menu' | 'playing' | 'dialogue' | 'paused' | 'complete';
 
 const WALK = 4.8, RUN = 8.6, JUMP = 10.5, CLIMB = 3.6;
 const MAX_HEARTS = 3;
@@ -95,7 +96,7 @@ export class Game {
       settingsChanged: (s) => this.applySettings(s, true), drawMap: (c) => this.paintMap(c), advanceDialogue: () => this.advanceDialogue(),
       closeSettings: () => this.ui.showScreen(this.state === 'paused' ? 'pause' : 'menu'),
       closeControls: () => this.ui.showScreen(this.state === 'paused' ? 'pause' : 'menu'),
-      startFlight: () => this.startFlight(), nextScenery: () => this.nextScenery(),
+      startFlight: () => this.startFlight(), nextScenery: () => this.nextScenery(), playTrailer: () => this.playTrailer(), skipTrailer: () => this.skipTrailer(),
     }, () => this.settings);
     this.ui.inventoryRef = this.inventory; this.ui.onBlip = () => this.audio.blip();
     step(0.05);
@@ -136,8 +137,12 @@ export class Game {
 
     this.scene.onBeforeRenderObservable.add(() => this.frame());
     this.engine.runRenderLoop(() => this.scene.render());
+    document.addEventListener('keydown', (e) => { if (this.state === 'trailer' && (e.code === 'Space' || e.code === 'Enter')) this.skipTrailer(); });
     step(1);
     this.toMenu(true);
+    // Abertura: toque para começar (libera o áudio) e trailer. Em modo de depuração (testes) vai direto ao menu, salvo com &splash.
+    const q = new URLSearchParams(location.search);
+    if (!q.has('debug') || q.has('splash')) { this.state = 'splash'; this.ui.showScreen('splash'); }
   }
 
   /* ---------- fases ---------- */
@@ -228,6 +233,58 @@ export class Game {
     this.checkpoint = { id: 'cp0', x: st.x, y: 0, z: st.z };
     this.placePlayer(st.x, 0, st.z, true);
     this.bird.reset(); this.observing = false; this.env.setObserve(false); this.glideEnergy = 1; this.waterTime = 0;
+  }
+
+  /* ---------- trailer de abertura ---------- */
+  trailer: Trailer | null = null; private trailerReturn = 1;
+  private playTrailer(): void {
+    if (this.state !== 'splash' && this.state !== 'menu') return;
+    this.audio.init(); this.audio.apply(this.settings); this.audio.start();
+    this.trailerReturn = this.level.info.id;
+    if (this.level.info.id !== 1) this.loadLevel(1);
+    this.rig.setMode('orbital');
+    this.trailer = new Trailer({
+      camera: this.rig.camera, model: this.model, level: this.level, env: this.env, audio: this.audio, body: this.body,
+      caption: (t) => this.ui.trailerCaption(t), title: (on) => this.ui.trailerTitle(on), setHeading: (h) => { this.heading = h; },
+      done: () => this.skipTrailer(),
+    });
+    this.state = 'trailer'; this.input.enabled = false;
+    this.ui.showScreen(null); this.ui.setHud(false); this.ui.showTrailer(true);
+  }
+  private skipTrailer(): void {
+    if (this.state !== 'trailer') return;
+    this.state = 'menu'; // evita reentrada enquanto escurece
+    this.ui.fade(true);
+    setTimeout(() => {
+      this.trailer = null; this.ui.showTrailer(false);
+      this.audio.setBuzz(0); this.audio.setRain(0); this.env.setRain(0);
+      this.model.animateFlight(1, false, 0, 0, 0, 0);
+      this.loadLevel(this.trailerReturn); // restaura luz, clima e vento da fase
+      this.toMenu(true);
+      this.ui.fade(false);
+    }, 450);
+  }
+  private updateTrailer(dt: number, f: InputFrame): void {
+    const tr = this.trailer; if (!tr) return;
+    if (f.pause) { this.skipTrailer(); return; }
+    tr.update(dt);
+    const b = this.body, feet = new Vector3(b.x, b.y, b.z);
+    this.env.update(dt, feet);
+    this.level.active = false;
+    this.level.update(dt, feet, false, this.env.hasPipeline);
+    this.env.setFlash(Math.max(this.level.flash, tr.flash));
+    this.level.events.splice(0);
+    this.model.root.position.set(b.x, b.y, b.z); this.model.root.rotation.y = this.heading; this.model.setVisible(true);
+    const p = tr.pose;
+    this.model.animateFlight(dt, p.flying, p.speed / 17, p.bank, p.pitch, p.climb);
+    if (!p.flying) this.model.animate(dt, 0, true, false, false);
+    this.audio.setBuzz(p.flying ? 0.35 + 0.4 * Math.min(1, p.speed / 17) : 0, 10);
+    const g = this.level.world.groundAt(b.x, b.z, b.y + 0.2, 0.3);
+    this.blob.position.set(b.x, g.y + 0.04, b.z); this.blob.rotation.y = this.heading;
+    const sc = Math.max(0.3, 1 - (b.y - g.y) * 0.1); this.blob.scaling.set(sc, 1, sc);
+    const c = this.rig.camera.position;
+    this.audio.setListener(c.x, c.y, c.z, Math.sin(this.heading), Math.cos(this.heading));
+    this.audio.update(b);
   }
 
   /* ---------- voo livre ---------- */
@@ -450,7 +507,8 @@ export class Game {
   private step(dt: number, f: InputFrame): void {
     if (this.saveDirty && (this.saveTimer -= dt) <= 0 && this.state === 'playing') void this.flushSave();
     switch (this.state) {
-      case 'menu': this.updateMenu(dt); break;
+      case 'menu': case 'splash': this.updateMenu(dt); break;
+      case 'trailer': this.updateTrailer(dt, f); break;
       case 'playing': this.updatePlaying(dt, f); break;
       case 'dialogue': this.updateDialogue(dt, f); break;
       case 'paused': if (f.pause && !this.ui.isOpen('settings') && !this.ui.isOpen('controls')) this.resume(); break;

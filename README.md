@@ -53,11 +53,18 @@ npm run dev &
 CHROMIUM_PATH=/caminho/do/chrome BASE_URL=http://localhost:5173 npm run e2e   # desktop: fluxo das fases 1 a 6 (um teste por vez!)
 PHASE=7 CHROMIUM_PATH=... BASE_URL=... node e2e/phase.mjs   # testa só a fase 7 (ou 8) isolada
 CHROMIUM_PATH=... BASE_URL=... node e2e/mobile.mjs                              # celular: toque real (CDP)
+CHROMIUM_PATH=... BASE_URL=... node e2e/responsive.mjs                          # auditoria de layout 320…3840 px (ONLY=360,1920 filtra larguras)
+CHROMIUM_PATH=... BASE_URL=... node e2e/flight.mjs                              # modo Voo livre
+CHROMIUM_PATH=... BASE_URL=... node e2e/trailer.mjs                             # splash + trailer de abertura
 ```
 
-Abra com `/?debug` para expor `window.__marieta` (usado pelos testes).
+Abra com `/?debug` para expor `window.__marieta` (usado pelos testes; também pula o splash — use `/?debug&splash` para vê-lo).
 
 ## Como jogar
+**Abertura:** ao carregar, aparece "Toque para começar" (libera o áudio do navegador) e roda o **trailer** em tempo real (~46 s: amanhecer → tempestade leva a Marieta → Tito → voo ao pôr do sol → título). Toque/clique, Esc, Espaço ou Enter pulam; "Ver o trailer" no menu repete.
+
+**Voo livre (menu → 🪽):** a Marieta sobrevoa o cenário como num simulador. `A/D` viram (com inclinação), `W` acelera, `S` freia, `Espaço` sobe, `C` desce, `Shift` turbo, `🗺` troca o cenário (qualquer fase). No celular: joystick + botões Subir/Descer/Turbo. Asas traseiras batem com borrão de movimento, élitros se erguem e há zumbido; não altera o progresso salvo.
+
 
 | Entrada | Ação |
 |---|---|
@@ -118,6 +125,9 @@ Opcional: 3 sementes escondidas. Cuidado com a **sombra do pássaro**: esconda-s
 | Fase 6 (flores gigantes, correntes de ar quente, jardim que floresce, Rita, Freddy) | ✅ jogável de ponta a ponta (e2e) |
 | Fase 7 (ninho em construção, Sr. Caramujo, escolha de confiar em Dário) | ✅ jogável (e2e/phase.mjs) |
 | Fase 8 (vale florido, mural, cena final com câmera de cinema) | ✅ jogável (e2e/phase.mjs) |
+| Responsividade (rem fluido, 320→3840 px, retrato/paisagem, alvos ≥44 px, tela cheia, háptico, reduced-motion) | ✅ auditada por `e2e/responsive.mjs` em 16 tamanhos (overflow, cortes, sobreposição do HUD); **não testada em aparelhos reais** |
+| Modo Voo livre (física `flyStep`, asas/élitros animados, zumbido, troca de cenário) | ✅ testado (unit + e2e/flight.mjs); **sensação de voo/zumbido não avaliados por uma pessoa** |
+| Splash + trailer de abertura (cinemática em tempo real, legendas, pular) | ✅ testado (e2e/trailer.mjs); **sem trilha/voz dedicadas — usa a música procedural do jogo** |
 | Modelos Blender/GLB, animações autorais, gravações de áudio | ❌ arte atual é procedural (placeholder de qualidade de protótipo) |
 | Testes em iPhone/Safari e Android reais | ❌ pendente |
 

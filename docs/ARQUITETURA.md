@@ -46,3 +46,9 @@ Atenção: o rastreio de recursos da fase termina em `finishBuild()`; recursos c
 1. Criar `levelNData.ts` e `LevelN.ts` estendendo `LevelBase` (chame `finishBuild()` no fim do construtor).
 2. Declarar missões em `data/quests.ts` e diálogos em `data/dialogues.ts`.
 3. Registrar em `LEVELS` (`game/Game.ts`) e aumentar `READY_PHASES` (`ui/UI.ts`).
+
+## Voo livre, trailer e responsividade
+- `Game.flight` + `updateFlight`: dinâmica arcade (velocidade de cruzeiro, curva com bank, tom por subir/descer), integração em `CollisionWorld.flyStep` (esfera contra chão/formas/limites/teto). Progresso salvo nunca é gravado em voo (`flushSave` ignora).
+- `MarietaModel.animateFlight`: élitros em duas metades com dobradiça na costura, asas traseiras com 3 camadas (borrão), pernas recolhidas; `GameAudio.setBuzz` gera o zumbido.
+- `game/Trailer.ts`: roteiro por tempo (`t`) que controla câmera, luz/clima da Fase 1 e a pose da Marieta; `Game` estados `splash`/`trailer`.
+- UI: `html { font-size }` fluido (`clamp` por vw/vh × `--ui` do usuário), todo o CSS em `rem`; `body.touch` reorganiza o HUD (`#hud-left`).

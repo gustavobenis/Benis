@@ -157,3 +157,18 @@ body.flight.touch #flight-hud { bottom: auto; top: calc(max(58px, 4.2rem) + var(
 @media (max-width: 767px) { body.flight.touch #flight-hud { flex-direction: row; gap: 0.8rem; max-width: calc(100vw - 7.5rem); } body.flight.touch #flight-hud span:last-child { display: none; } }
 body.flight #hint { bottom: calc(4.6rem + var(--safe-b)); }
 body.flight.touch #hint { bottom: calc(46% + var(--safe-b)); }
+
+/* ---- abertura: splash e trailer ---- */
+#splash { flex-direction: column; gap: 0.6rem; background: radial-gradient(ellipse at center, rgba(10,30,18,0.15), rgba(8,24,14,0.7)); text-align: center; }
+.splash-btn { font-size: 1.4rem; padding: 0.7rem 2rem; margin-top: 1rem; animation: pulse2 1.6s infinite; }
+@keyframes pulse2 { 50% { transform: scale(1.05); } }
+#trailer { position: absolute; inset: 0; z-index: 25; cursor: pointer; }
+#trailer .lbx { position: absolute; left: 0; right: 0; height: 12%; background: #000; }
+#trailer .lbx.top { top: 0; } #trailer .lbx.bot { bottom: 0; }
+#tr-cap { position: absolute; left: 50%; bottom: calc(14% + var(--safe-b)); transform: translateX(-50%); width: min(46rem, calc(100% - 2rem)); text-align: center; margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 700; font-size: clamp(1.1rem, 2.4vw, 2rem); line-height: 1.25; text-shadow: 0 2px 8px rgba(0,0,0,.85), 0 0 2px #000; transition: opacity .6s; }
+#tr-cap:empty { opacity: 0; }
+#tr-title { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transition: opacity 1.4s; pointer-events: none; }
+#tr-title.on { opacity: 1; }
+#tr-title .logo { font-size: clamp(3.5rem, 12vw, 9rem); }
+#tr-skip { position: absolute; right: calc(1rem + var(--safe-r)); bottom: calc(1rem + var(--safe-b)); z-index: 2; }
+@media (prefers-reduced-motion: reduce) { .splash-btn { animation: none; } }

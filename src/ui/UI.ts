@@ -8,8 +8,8 @@ const $ = <T extends HTMLElement>(id: string): T => {
   return el as T;
 };
 
-type ScreenId = 'loading' | 'menu' | 'pause' | 'settings' | 'controls' | 'complete' | 'credits';
-const SCREENS: ScreenId[] = ['loading', 'menu', 'pause', 'settings', 'controls', 'complete', 'credits'];
+type ScreenId = 'loading' | 'splash' | 'menu' | 'pause' | 'settings' | 'controls' | 'complete' | 'credits';
+const SCREENS: ScreenId[] = ['loading', 'splash', 'menu', 'pause', 'settings', 'controls', 'complete', 'credits'];
 
 /** As 8 fases da arte de referência; só as marcadas `ready` existem. */
 export const PHASES = [
@@ -27,7 +27,7 @@ export const READY_PHASES = 8;
 export interface UIHandlers {
   newGame(level: number): void; continueGame(): void; resume(): void; toMenu(): void; freeRoam(): void; nextLevel(): void;
   settingsChanged(s: Settings): void; drawMap(c: HTMLCanvasElement): void; advanceDialogue(): void;
-  closeSettings(): void; closeControls(): void; startFlight(): void; nextScenery(): void;
+  closeSettings(): void; closeControls(): void; startFlight(): void; nextScenery(): void; playTrailer(): void; skipTrailer(): void;
 }
 
 const SLIDERS: [keyof Settings, string, number, number, number][] = [
@@ -44,6 +44,11 @@ export class UI {
   constructor(private h: UIHandlers, private settings: () => Settings) {
     $('btn-new').onclick = () => h.newGame(1);
     $('btn-fly').onclick = () => h.startFlight();
+    $('btn-trailer').onclick = () => h.playTrailer();
+    $('splash-play').onclick = () => h.playTrailer();
+    $('splash-skip').onclick = () => h.toMenu();
+    $('tr-skip').onclick = (e) => { e.stopPropagation(); h.skipTrailer(); };
+    $('trailer').addEventListener('click', () => h.skipTrailer());
     $('b-scene').onclick = () => h.nextScenery();
     $('btn-credits').onclick = () => this.showScreen('credits');
     $('credits-close').onclick = () => this.showScreen('menu');
@@ -86,6 +91,9 @@ export class UI {
   flightInfo(alt: number, speed: number, scenery: string): void {
     $('fl-alt').textContent = `${Math.max(0, alt).toFixed(0)} m`; $('fl-spd').textContent = `${(speed * 3.6).toFixed(0)} km/h`; $('fl-name').textContent = scenery;
   }
+  showTrailer(on: boolean): void { $('trailer').classList.toggle('hidden', !on); if (!on) { $('tr-title').classList.remove('on'); $('tr-cap').textContent = ''; } }
+  trailerCaption(text: string | null): void { $('tr-cap').textContent = text ?? ''; }
+  trailerTitle(on: boolean): void { $('tr-title').classList.toggle('on', on); }
   bindFullscreen(): void {
     const b = $('b-full'); const doc = document as Document & { webkitFullscreenElement?: Element };
     const root = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => void };
