@@ -6,7 +6,25 @@ Stack: **Babylon.js + TypeScript + Vite** (sem servidor; progresso salvo localme
 > **Estado atual: protótipo jogável da Fase 1 — O Jardim das Gotas.** As Fases 2–8 ainda não existem.
 > Veja [o que está e o que não está pronto](#estado-do-projeto).
 
-## Rodar
+## Rodar no computador (Windows, macOS, Linux)
+
+1. Instale o [Node.js](https://nodejs.org) 18 ou superior (versão LTS).
+2. No terminal:
+   ```bash
+   git clone https://github.com/gustavobenis/Benis.git
+   cd Benis
+   git checkout claude/marieta-game-design-97fhfm
+   npm install
+   npm run dev          # abre em http://localhost:5173
+   ```
+3. Abra **http://localhost:5173** no Chrome, Edge ou Firefox atualizados (com aceleração de hardware ligada) e clique em **Novo jogo**.
+   Clique na tela durante o jogo para capturar o mouse e girar a câmera; **Esc** pausa e solta o mouse.
+
+Para jogar a versão otimizada (build de produção): `npm run play` (leva alguns minutos no primeiro build).
+Para testar no celular na mesma rede Wi-Fi, abra no celular o endereço `Network` que o `npm run dev` mostra
+(o toque funciona; o áudio e alguns recursos exigem HTTPS ao publicar).
+
+## Comandos
 
 ```bash
 npm install
