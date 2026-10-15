@@ -249,3 +249,44 @@ export function pickStormDialogue(npc: string, q: QuestLog): DialogueDef {
   if (st.status === 'active' && st.objective < 4) return S.zuzu_early;
   return S.zuzu_after;
 }
+
+const V: Record<string, DialogueDef> = {
+  rita_intro: {
+    id: 'rita_intro', speaker: 'Rita',
+    lines: [
+      'Marieta! Beto! Que alívio, vocês atravessaram a tempestade! Eu sou a Rita, a libélula exploradora.',
+      'Olhem ao redor: a chuva destruiu o nosso vale, mas as sementes estão despertando. Falta pouco para tudo florescer outra vez!',
+      'O Jardim da Esperança só volta à vida com quatro flores raras, e elas estão nas alturas, em flores gigantes.',
+      'Procure as colunas de pólen dourado no ar: são correntes de ar quente! Entre numa delas, no ar, e ela leva você para cima.',
+    ],
+    onEnd: ['talk:rita'],
+  },
+  rita_again: { id: 'rita_again', speaker: 'Rita', lines: ['Quatro flores raras, lá no alto! Entre nas colunas de pólen dourado e deixe a corrente de ar levar você.'] },
+  rita_garden: { id: 'rita_garden', speaker: 'Rita', lines: ['Você tem as flores! Leve-as ao Jardim da Esperança, no meio do vale, e replante.'] },
+  rita_after: { id: 'rita_after', speaker: 'Rita', lines: ['O vale está florescendo! Suba ao mirante: o pôr do sol de lá é inesquecível.'] },
+  freddy_early: { id: 'freddy_early', speaker: 'Freddy', lines: ['Já escuto os seus passos! Suba até o mirante e eu toco uma música para vocês.'] },
+  freddy_intro: {
+    id: 'freddy_intro', speaker: 'Freddy',
+    lines: [
+      'Chegaram! Eu sou o Freddy, o grilo músico. Compus uma canção para a esperança, e agora ela tem uma plateia!',
+      'Marieta, você não desistiu na tempestade, nem na enchente, nem na floresta. E o Beto sempre ao seu lado.',
+      'Há um ninho verde mais adiante, onde a comunidade vai construir um novo lar. Todos estão esperando por vocês.',
+    ],
+    onEnd: ['talk:freddy'],
+  },
+  freddy_after: { id: 'freddy_after', speaker: 'Freddy', lines: ['Que a música acompanhe vocês até o Ninho Verde!'] },
+};
+
+/** Diálogos da Fase 6 conforme o estado das missões. */
+export function pickValleyDialogue(npc: string, q: QuestLog): DialogueDef {
+  const st = q.state('vale');
+  if (npc === 'rita') {
+    if (st.status === 'active' && st.objective === 0) return V.rita_intro;
+    if (st.status === 'active' && st.objective === 1) return V.rita_again;
+    if (st.status === 'active' && st.objective === 2) return V.rita_garden;
+    return V.rita_after;
+  }
+  if (st.status === 'active' && st.objective === 4) return V.freddy_intro;
+  if (st.status === 'active' && st.objective < 4) return V.freddy_early;
+  return V.freddy_after;
+}

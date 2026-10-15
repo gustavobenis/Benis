@@ -107,3 +107,24 @@ export const LEVEL5_QUESTS: QuestDef[] = [
     objectives: [{ id: 'cr', text: 'Encontre os cristais que a chuva revelou', type: 'collect', target: 'crystal', count: 2 }],
   },
 ];
+
+/** Missões da Fase 6 — O Vale das Flores (Esperança). */
+export const LEVEL6_QUESTS: QuestDef[] = [
+  {
+    id: 'vale',
+    title: 'Florescer o vale',
+    objectives: [
+      { id: 'rita', text: 'Converse com Rita, a libélula', type: 'talk', target: 'rita' },
+      { id: 'flores', text: 'Colete as flores raras nas alturas (use as correntes de ar)', type: 'collect', target: 'flower', count: 4 },
+      { id: 'jardim', text: 'Replante o Jardim da Esperança', type: 'interact', target: 'garden' },
+      { id: 'mirante', text: 'Suba ao mirante ao pôr do sol', type: 'reach', target: 'overlook' },
+      { id: 'freddy', text: 'Converse com Freddy, o grilo músico', type: 'talk', target: 'freddy' },
+    ],
+  },
+  {
+    id: 'cristais_vale',
+    title: 'Brilhos do crepúsculo',
+    optional: true,
+    objectives: [{ id: 'cr', text: 'Encontre os cristais do vale', type: 'collect', target: 'crystal', count: 2 }],
+  },
+];

@@ -30,7 +30,7 @@ export type Shape = CylinderShape | BoxShape;
 
 export interface WaterRect { minX: number; maxX: number; minZ: number; maxZ: number; flowX: number; flowZ: number }
 
-export interface Zone { id: string; x: number; z: number; r: number; type: 'puddle' | 'checkpoint' | 'goal' | 'glide' | 'web' }
+export interface Zone { id: string; x: number; z: number; r: number; type: 'puddle' | 'checkpoint' | 'goal' | 'glide' | 'web' | 'updraft'; /** Updraft: altura máxima da corrente de ar. */ top?: number }
 
 export interface Body {
   x: number; y: number; z: number; // y = pés
@@ -134,6 +134,12 @@ export class CollisionWorld {
    */
   step(b: Body, dt: number, wishX: number, wishZ: number, opts: { accel: number; jump: boolean; jumpSpeed: number; glide: boolean; climb: boolean; climbSpeed: number }): { landed: boolean; jumped: boolean; bounced: boolean } {
     const ev = { landed: false, jumped: false, bounced: false };
+    // Corrente de ar quente (térmica): no ar, empurra para cima até a altura máxima da zona
+    for (const zn of this.zones) {
+      if (zn.type !== 'updraft' || b.grounded || b.climbing) continue;
+      if (Math.hypot(b.x - zn.x, b.z - zn.z) <= zn.r && b.y < (zn.top ?? 24) && b.vy < 7) b.vy = Math.min(7, b.vy + 46 * dt);
+    }
+
     // Carregado por plataforma móvel
     if (b.grounded && b.support?.move) { b.x += b.support.move.dx; b.z += b.support.move.dz; }
 

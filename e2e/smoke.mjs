@@ -314,12 +314,43 @@ ok((await G('g.hearts')) === 2, 'chegou à colina sem se machucar na travessia')
 await talk(7, 52);
 ok(await waitState('complete'), 'falar com Zuzu conclui a Fase 5');
 await page.screenshot({ path: OUT + '25-fase5-vitoria.png' });
-ok(!(await page.isVisible('#complete-next')), 'Fase 5 é a última disponível: sem botão de próxima fase');
+ok(await page.isVisible('#complete-next'), 'Fase 5 concluída oferece a Fase 6');
+
+console.log('7e. Fase 6 — O Vale das Flores');
+await page.click('#complete-next');
+ok(await waitState('playing'), 'Próxima fase inicia a Fase 6');
+ok((await G('g.level.info.id')) === 6, 'Fase 6 carregada');
+await prep();
+await G('(g.bird.nextAt = 1e9, true)');
+await talk(8, -79);
+ok(await until("g.quests.currentObjective('vale')?.id === 'flores'", 10000), 'Rita pede as flores raras');
+await page.screenshot({ path: OUT + '26-fase6-rita.png' });
+// Corrente de ar: entra no ar na coluna de pólen e é levada para cima; com A, pousa sobre a flor gigante
+await tp(-16.5, 3, -58);
+await page.keyboard.down('a');
+ok(await until('g.body.grounded && g.body.y > 8 && g.body.x < -19', 60000), 'a corrente de ar leva Marieta até o topo da flor gigante');
+await page.keyboard.up('a');
+await page.screenshot({ path: OUT + '27-fase6-flor-gigante.png' });
+const flowers = await G("g.level.pickups.filter(p => p.def.kind === 'flower').map(p => [p.def.x, p.def.y, p.def.z])");
+for (let i = 0; i < flowers.length; i++) { const [x, y, z] = flowers[i]; await tp(x, y, z); await until(`g.inventory.count('flower') >= ${i + 1}`, 8000); }
+ok((await G("g.inventory.count('flower')")) === 4, 'coletou as 4 flores raras');
+ok((await G("g.quests.currentObjective('vale').id")) === 'jardim', 'objetivo: replantar o jardim');
+await tp(0, 0, 43.5); await until("!document.getElementById('prompt').classList.contains('hidden')");
+await page.keyboard.press('e');
+ok(await until('g.level.gate.open'), 'jardim replantado: o vale floresce e o caminho se abre');
+await sleep(3000);
+await page.screenshot({ path: OUT + '28-fase6-jardim.png' });
+await tp(0, 0, 80);
+ok(await until("g.quests.currentObjective('vale')?.id === 'freddy'", 15000), 'chegou ao mirante');
+await talk(0, 86);
+ok(await waitState('complete'), 'falar com Freddy conclui a Fase 6');
+await page.screenshot({ path: OUT + '29-fase6-vitoria.png' });
+ok(!(await page.isVisible('#complete-next')), 'Fase 6 é a última disponível: sem botão de próxima fase');
 
 console.log('8. Rio: correnteza, resgate e coração');
 await page.click('#complete-menu');
 ok(await waitState('menu'), 'volta ao menu');
-ok((await page.locator('.phase:not(.locked)').count()) === 5, 'seleção de fases mostra 5 fases liberadas');
+ok((await page.locator('.phase:not(.locked)').count()) === 6, 'seleção de fases mostra 6 fases liberadas');
 page.once('dialog', (d) => d.accept());
 await page.locator('.phase').nth(1).click();
 ok(await waitState('playing'), 'iniciar a Fase 2 pela seleção');

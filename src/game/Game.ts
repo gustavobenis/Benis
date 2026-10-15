@@ -13,6 +13,7 @@ import { Level2 } from '../levels/Level2';
 import { Level3 } from '../levels/Level3';
 import { Level4 } from '../levels/Level4';
 import { Level5 } from '../levels/Level5';
+import { Level6 } from '../levels/Level6';
 import { MarietaModel } from '../player/Marieta';
 import { BirdShadow } from './BirdShadow';
 import { QuestLog, type QuestNotice } from '../systems/Quests';
@@ -36,6 +37,7 @@ const LEVELS: Record<number, (scene: Scene, grass: number) => LevelBase> = {
   3: (s, g) => new Level3(s, g),
   4: (s, g) => new Level4(s, g),
   5: (s, g) => new Level5(s, g),
+  6: (s, g) => new Level6(s, g),
 };
 
 /** Habilidades aprendidas na Fase 1 (Tito) valem para as fases seguintes. */
@@ -266,9 +268,10 @@ export class Game {
       2: { title: 'Fase concluída!', text: 'Marieta e Beto se encontraram à beira do rio. Adiante, a floresta escura espera por eles.', note: 'Fase 3 liberada: A Floresta' },
       3: { title: 'Fase concluída!', text: 'Dona Olívia abençoou a travessia. Adiante, o formigueiro está em perigo.', note: 'Fase 4 liberada: A Colônia' },
       4: { title: 'Fase concluída!', text: 'A Rainha agradeceu à joaninha. O céu escurece: a grande tempestade chegou.', note: 'Fase 5 liberada: A Tempestade' },
-      5: { title: 'Obrigado por jogar!', text: 'Marieta e Beto atravessaram a enchente juntos e Zuzu os recebeu na colina. Depois da tempestade, vem um vale cheio de flores.', note: 'Fim da demo atual — as fases 6 a 8 virão em seguida.' },
+      5: { title: 'Fase concluída!', text: 'Marieta e Beto atravessaram a enchente juntos e Zuzu os recebeu na colina. A tempestade passou: adiante, um vale à espera de flores.', note: 'Fase 6 liberada: O Vale das Flores' },
+      6: { title: 'Obrigado por jogar!', text: 'O vale floresceu e Freddy tocou a canção da esperança ao pôr do sol. Adiante, o Ninho Verde espera por um novo lar.', note: 'Fim da demo atual — as fases 7 e 8 virão em seguida.' },
     };
-    const o = OUT[id] ?? OUT[5];
+    const o = OUT[id] ?? OUT[6];
     this.ui.complete({ title: o.title, text: o.text, stats: `${stats}<br><small>${o.note}</small>`, next: hasNext, final: !hasNext });
     this.ui.setTouch(false); this.ui.prompt(null); void this.flushSave();
   }

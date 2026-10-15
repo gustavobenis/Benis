@@ -123,3 +123,21 @@ describe('Cogumelo-trampolim', () => {
     expect(maxY).toBeGreaterThan(6);   // subiu mais alto que a queda inicial pela energia do trampolim
   });
 });
+
+describe('Corrente de ar (updraft)', () => {
+  it('levanta quem está no ar dentro da zona, e não quem está fora', () => {
+    const w = new CollisionWorld();
+    w.zones.push({ id: 'u', x: 0, z: 0, r: 4, type: 'updraft', top: 20 });
+    const inside = createBody(0, 2, 0), outside = createBody(30, 2, 0);
+    for (let i = 0; i < 90; i++) { w.step(inside, 1 / 60, 0, 0, OPTS); w.step(outside, 1 / 60, 0, 0, OPTS); }
+    expect(inside.y).toBeGreaterThan(6);       // subiu
+    expect(outside.y).toBe(0);                 // caiu normalmente
+  });
+  it('respeita a altura máxima da corrente', () => {
+    const w = new CollisionWorld();
+    w.zones.push({ id: 'u', x: 0, z: 0, r: 4, type: 'updraft', top: 8 });
+    const b = createBody(0, 2, 0);
+    for (let i = 0; i < 600; i++) w.step(b, 1 / 60, 0, 0, OPTS);
+    expect(b.y).toBeLessThan(11);
+  });
+});

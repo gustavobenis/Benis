@@ -1,9 +1,9 @@
-import { Color3, DynamicTexture, Mesh, MeshBuilder, PBRMaterial, TransformNode } from '@babylonjs/core';
+import { Color3, DynamicTexture, Mesh, MeshBuilder, PBRMaterial, StandardMaterial, TransformNode } from '@babylonjs/core';
 import type { AbstractMesh, Scene } from '@babylonjs/core';
 import type { Materials } from '../levels/Materials';
 import { SnailModel } from './Marieta';
 
-export type NpcKind = 'snail' | 'ant' | 'butterfly' | 'beetle' | 'grasshopper' | 'spider' | 'queen' | 'caterpillar';
+export type NpcKind = 'snail' | 'ant' | 'butterfly' | 'beetle' | 'grasshopper' | 'spider' | 'queen' | 'caterpillar' | 'dragonfly' | 'cricket';
 
 /** Contrato comum dos personagens secundários. */
 export interface NpcModel {
@@ -248,6 +248,66 @@ class CaterpillarNpc implements NpcModel {
   }
 }
 
+/** Rita: libélula exploradora, paira no ar com quatro asas translúcidas. */
+class DragonflyNpc implements NpcModel {
+  readonly root: TransformNode; readonly meshes: AbstractMesh[] = []; hover = 3.2;
+  private wings: TransformNode[] = []; private t = Math.random() * 6;
+  constructor(scene: Scene, mats: Materials) {
+    this.root = new TransformNode('rita', scene);
+    const body = pbr(scene, 'drBody', new Color3(0.1, 0.5, 0.75), 0.25); body.emissiveColor = new Color3(0.02, 0.08, 0.14);
+    const add = (m: Mesh, mat: Mesh['material'], parent: TransformNode = this.root) => { m.material = mat; m.parent = parent; this.meshes.push(m); return m; };
+    for (let i = 0; i < 6; i++) add(sphere(scene, 0.5 - i * 0.03, 0.8, 0.8, 1.5, 0, 0, -0.8 - i * 0.85), body);
+    add(sphere(scene, 0.9, 1, 0.9, 1.2, 0, 0.05, 0.1), body);
+    add(sphere(scene, 0.8, 1, 0.9, 0.9, 0, 0.1, 0.95), body);
+    const eye = pbr(scene, 'drEye', new Color3(0.25, 0.75, 0.9), 0.1); eye.emissiveColor = new Color3(0.05, 0.2, 0.3);
+    for (const sx of [-1, 1]) { add(sphere(scene, 0.6, 1, 1, 1, sx * 0.34, 0.25, 1.05), eye); add(sphere(scene, 0.2, 1, 1, 1, sx * 0.4, 0.3, 1.3), mats.black); }
+    const wm = new StandardMaterial('drWing', scene); wm.diffuseColor = new Color3(0.8, 0.95, 1); wm.alpha = 0.4; wm.backFaceCulling = false; wm.emissiveColor = new Color3(0.2, 0.3, 0.35);
+    for (const sx of [-1, 1]) for (const z of [0.35, -0.25]) {
+      const w = new TransformNode('w', scene); w.parent = this.root; w.position.set(sx * 0.2, 0.4, z);
+      const d = MeshBuilder.CreateDisc('wd', { radius: 1.1, tessellation: 18 }, scene); d.rotation.x = Math.PI / 2; d.scaling.set(1.5, 0.45, 1); d.position.x = sx * 1.4; add(d, wm, w);
+      this.wings.push(w);
+    }
+    this.root.scaling.setAll(1.15);
+  }
+  animate(dt: number) {
+    this.t += dt;
+    const f = Math.sin(this.t * 38) * 0.28;
+    this.wings.forEach((w, i) => { w.rotation.z = (i < 2 ? (i === 0 ? 1 : -1) : (i === 2 ? -1 : 1)) * f + (i < 2 ? 0.1 : -0.1) * (i % 2 ? -1 : 1); });
+    this.root.position.y += (this.hover + Math.sin(this.t * 1.4) * 0.35 - this.root.position.y) * Math.min(1, dt * 4);
+  }
+}
+
+/** Freddy: grilo músico com um violão e antenas longas. */
+class CricketNpc implements NpcModel {
+  readonly root: TransformNode; readonly meshes: AbstractMesh[] = []; hover = 0;
+  private ants: TransformNode[] = []; private foot: TransformNode; private t = Math.random() * 6; private guitar: TransformNode;
+  constructor(scene: Scene, mats: Materials) {
+    this.root = new TransformNode('freddy', scene);
+    const skin = pbr(scene, 'crSkin', new Color3(0.28, 0.2, 0.1), 0.5), wood = pbr(scene, 'wood', new Color3(0.7, 0.42, 0.2), 0.35);
+    const add = (m: Mesh, mat: Mesh['material'], parent: TransformNode = this.root) => { m.material = mat; m.parent = parent; this.meshes.push(m); return m; };
+    add(sphere(scene, 1, 0.9, 0.8, 2.0, 0, 1.3, -0.6), skin);
+    add(sphere(scene, 1, 0.8, 0.9, 0.9, 0, 1.55, 0.65), skin);
+    for (const sx of [-1, 1]) {
+      add(sphere(scene, 0.4, 1, 1.15, 0.9, sx * 0.28, 1.8, 0.95), mats.white); add(sphere(scene, 0.2, 1, 1, 0.8, sx * 0.28, 1.8, 1.12), mats.black);
+      const a = new TransformNode('a', scene); a.parent = this.root; a.position.set(sx * 0.15, 2.0, 0.9); a.rotation.set(-0.6, sx * -0.35, 0);
+      const st = MeshBuilder.CreateCylinder('as', { height: 2.2, diameter: 0.05, tessellation: 5 }, scene); st.position.y = 1.1; add(st, skin, a); this.ants.push(a);
+      const th = MeshBuilder.CreateCylinder('th', { height: 1.7, diameter: 0.3, tessellation: 7 }, scene); th.rotation.x = Math.PI / 2 - 0.6; th.position.set(sx * 0.5, 1.7, -1.3); add(th, skin);
+    }
+    this.foot = new TransformNode('foot', scene); this.foot.parent = this.root; this.foot.position.set(0.55, 0.5, 0.2);
+    const fl = MeshBuilder.CreateCylinder('fl', { height: 1.0, diameter: 0.1, tessellation: 5 }, scene); fl.position.y = 0.3; add(fl, skin, this.foot);
+    this.guitar = new TransformNode('guitar', scene); this.guitar.parent = this.root; this.guitar.position.set(-0.2, 1.1, 0.7); this.guitar.rotation.set(0.2, 0, -0.6);
+    add(sphere(scene, 1, 1.0, 0.35, 1.1, 0, 0, 0), wood, this.guitar);
+    const neck = MeshBuilder.CreateBox('neck', { width: 0.12, height: 0.12, depth: 1.5 }, scene); neck.position.set(0, 0.05, 1.2); add(neck, skin, this.guitar);
+    this.root.scaling.setAll(1.15);
+  }
+  animate(dt: number) {
+    this.t += dt;
+    this.foot.rotation.x = Math.sin(this.t * 5) * 0.35;
+    this.guitar.rotation.z = -0.6 + Math.sin(this.t * 5) * 0.04;
+    this.ants.forEach((a, i) => { a.rotation.x = -0.6 + Math.sin(this.t * 1.9 + i) * 0.18; });
+  }
+}
+
 /** Tico: gafanhoto alegre, de pernas traseiras grandes. */
 class GrasshopperNpc implements NpcModel {
   readonly root: TransformNode; readonly meshes: AbstractMesh[] = []; hover = 0;
@@ -285,6 +345,8 @@ export function createNpcModel(kind: NpcKind, scene: Scene, mats: Materials): Np
     case 'ant': return new AntNpc(scene, mats);
     case 'queen': return new AntNpc(scene, mats, true);
     case 'caterpillar': return new CaterpillarNpc(scene, mats);
+    case 'dragonfly': return new DragonflyNpc(scene, mats);
+    case 'cricket': return new CricketNpc(scene, mats);
     case 'butterfly': return new ButterflyNpc(scene, mats);
     case 'beetle': return new BeetleNpc(scene, mats);
     case 'grasshopper': return new GrasshopperNpc(scene, mats);
