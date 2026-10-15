@@ -12,6 +12,7 @@ import { Materials } from '../levels/Materials';
 import { Level2 } from '../levels/Level2';
 import { Level3 } from '../levels/Level3';
 import { Level4 } from '../levels/Level4';
+import { Level5 } from '../levels/Level5';
 import { MarietaModel } from '../player/Marieta';
 import { BirdShadow } from './BirdShadow';
 import { QuestLog, type QuestNotice } from '../systems/Quests';
@@ -34,6 +35,7 @@ const LEVELS: Record<number, (scene: Scene, grass: number) => LevelBase> = {
   2: (s, g) => new Level2(s, g),
   3: (s, g) => new Level3(s, g),
   4: (s, g) => new Level4(s, g),
+  5: (s, g) => new Level5(s, g),
 };
 
 /** Habilidades aprendidas na Fase 1 (Tito) valem para as fases seguintes. */
@@ -142,6 +144,10 @@ export class Game {
     this.env.setLighting(level.info.light);
     this.env.setShafts(level.info.shafts);
     level.grass.setFog(this.scene.fogColor, this.scene.fogDensity);
+    level.difficulty = this.settings.difficulty;
+    this.env.setRain(level.info.weather?.rain ?? 0);
+    level.grass.setWind(level.info.weather?.wind ?? 1);
+    this.audio.setRain(level.info.weather?.rain ?? 0);
     this.model.root.position.set(level.info.start.x, 0, level.info.start.z);
     this.flags.clear(); this.collected.clear(); this.inventory.load(undefined);
     learned(n).forEach((f) => this.flags.add(f));
@@ -159,6 +165,7 @@ export class Game {
   private afterStart(): void {
     this.audio.init(); this.audio.apply(this.settings); this.audio.start();
     if (!this.audio.hasSprings) this.addSprings();
+    this.audio.setRain(this.level.info.weather?.rain ?? 0);
     this.ui.setHud(true); this.ui.setTouch(this.input.usingTouch); this.input.enabled = true;
     this.ui.fade(false);
     if (!this.hintShown.has('controls')) {
@@ -235,7 +242,7 @@ export class Game {
     if (!first) void this.flushSave();
     this.state = 'menu'; this.input.enabled = false; this.input?.exitPointerLock();
     this.dialogue.advance(); this.ui.hideDialogue(); this.ui.setHud(false); this.ui.setTouch(false); this.ui.prompt(null); this.ui.danger(0);
-    this.audio.setTension(0); this.audio.stop();
+    this.audio.setTension(0); this.audio.stop(); this.audio.setRain(0);
     this.observing = false; this.env.setObserve(false);
     void this.save.loadGame().then((s) => { this.hasSave = !!s; this.ui.enableContinue(this.hasSave); });
     this.ui.buildLevels(this.unlocked, this.level.info.id);
@@ -258,9 +265,10 @@ export class Game {
       1: { title: 'Jardim concluído!', text: 'Marieta atravessou o Jardim das Gotas e encontrou um abrigo seguro. A grande aventura continua rio adiante…', note: 'Fase 2 liberada: O Rio' },
       2: { title: 'Fase concluída!', text: 'Marieta e Beto se encontraram à beira do rio. Adiante, a floresta escura espera por eles.', note: 'Fase 3 liberada: A Floresta' },
       3: { title: 'Fase concluída!', text: 'Dona Olívia abençoou a travessia. Adiante, o formigueiro está em perigo.', note: 'Fase 4 liberada: A Colônia' },
-      4: { title: 'Obrigado por jogar!', text: 'A Rainha agradeceu à joaninha. Uma grande tempestade se aproxima — mas essa é a próxima parte da aventura.', note: 'Fim da demo atual — as fases 5 a 8 virão em seguida.' },
+      4: { title: 'Fase concluída!', text: 'A Rainha agradeceu à joaninha. O céu escurece: a grande tempestade chegou.', note: 'Fase 5 liberada: A Tempestade' },
+      5: { title: 'Obrigado por jogar!', text: 'Marieta e Beto atravessaram a enchente juntos e Zuzu os recebeu na colina. Depois da tempestade, vem um vale cheio de flores.', note: 'Fim da demo atual — as fases 6 a 8 virão em seguida.' },
     };
-    const o = OUT[id] ?? OUT[4];
+    const o = OUT[id] ?? OUT[5];
     this.ui.complete({ title: o.title, text: o.text, stats: `${stats}<br><small>${o.note}</small>`, next: hasNext, final: !hasNext });
     this.ui.setTouch(false); this.ui.prompt(null); void this.flushSave();
   }
@@ -279,6 +287,7 @@ export class Game {
   /* ---------- configuração e qualidade ---------- */
   applySettings(s: Settings, persist: boolean): void {
     this.settings = s;
+    if (this.level) this.level.difficulty = s.difficulty;
     this.audio.apply(s);
     this.rig.distanceScale = s.cameraDistance; this.rig.reduceMotion = s.reduceMotion;
     // No modo automático, preserva o nível já ajustado pelo medidor de FPS
@@ -388,7 +397,10 @@ export class Game {
     const b = this.body, feet = new Vector3(b.x, b.y, b.z);
     this.rig.update(dt, feet, speed01);
     this.env.update(dt, feet);
+    this.level.active = this.state === 'playing';
     this.level.update(dt, feet, this.observing, this.env.hasPipeline);
+    this.env.setFlash(this.level.flash);
+    for (const e of this.level.events.splice(0)) { if (e === 'thunder') this.audio.thunder(); else if (e === 'gust') { this.audio.gust(); if (this.state === 'playing') this.ui.toast('💨 Rajada de vento! Abrigue-se sob uma folha.', 1800); } }
     this.model.root.position.set(b.x, b.y, b.z); this.model.root.rotation.y = this.heading;
     this.model.setVisible(this.rig.mode !== 'first' || this.state === 'menu');
     this.model.animate(dt, this.lastSpeed, b.grounded, this.gliding, b.climbing);
@@ -418,6 +430,10 @@ export class Game {
     if (b.inWater) speed *= 0.5; // nadar contra a correnteza é lento
     if (b.grounded && w.zoneAt(b.x, b.z, 'web')) speed *= 0.35; // teia: pegajosa
     const len = Math.hypot(wx, wz) || 1; wx = (wx / len) * speed * (mag > 0 ? 1 : 0); wz = (wz / len) * speed * (mag > 0 ? 1 : 0);
+
+    // Vento forte empurra quem está sem cobertura (mais no ar do que no chão)
+    const lw = this.level.wind;
+    if ((lw.x || lw.z) && !w.isCovered(b.x, b.z, b.y)) { const f = b.grounded ? 0.45 : 1; wx += lw.x * f; wz += lw.z * f; }
 
     // Salto com buffer e coyote time
     this.jumpBuffer = f.jumpPressed ? 0.14 : Math.max(0, this.jumpBuffer - dt);
@@ -506,7 +522,9 @@ export class Game {
   }
 
   /* ---------- diálogo ---------- */
+  private talkingTo = '';
   private startDialogue(npcId: string): void {
+    this.talkingTo = npcId;
     const d = this.level.info.pickDialogue(npcId, this.quests, this.flags);
     this.dialogue.start(d); this.state = 'dialogue'; this.input.enabled = false;
     this.ui.prompt(null); this.ui.showDialogue(d.speaker, this.dialogue.line); this.audio.interact();
@@ -518,6 +536,7 @@ export class Game {
     if (actions === null) { this.ui.showDialogue(this.dialogue.speaker, this.dialogue.line); return; }
     this.ui.hideDialogue(); this.state = 'playing'; this.input.enabled = true;
     for (const a of actions) this.runAction(a);
+    this.level.talked(this.talkingTo);
     this.queueSave();
   }
   private runAction(a: string): void {

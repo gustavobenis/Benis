@@ -154,7 +154,7 @@ export class Level4 extends LevelBase {
   update(dt: number, playerPos: Vector3, observing: boolean, toneByPostFx: boolean): void {
     this.updateCommon(dt, playerPos, observing, toneByPostFx);
     const covered = this.world.isCovered(playerPos.x, playerPos.z, playerPos.y);
-    if (this.patrol.update(dt, playerPos, covered) === 'seen') this.hazard = 'O louva-a-deus te viu!';
+    if (this.patrol.update(dt, playerPos, covered) === 'seen' && this.active) this.hazard = 'O louva-a-deus te viu!';
     this.mantis.root.position.set(this.patrol.x, 0, this.patrol.z); this.mantis.root.rotation.y = this.patrol.yaw;
     this.mantis.setMoving(this.patrol.moving ? 3.4 : 0); this.mantis.animate(dt);
     for (const w of this.walkers) {

@@ -265,12 +265,61 @@ ok(await until("g.quests.currentObjective('colonia')?.id === 'rainha'", 15000), 
 await talk(0, 84);
 ok(await waitState('complete'), 'falar com a Rainha conclui a Fase 4');
 await page.screenshot({ path: OUT + '22-fase4-vitoria.png' });
-ok(!(await page.isVisible('#complete-next')), 'Fase 4 é a última disponível: sem botão de próxima fase');
+ok(await page.isVisible('#complete-next'), 'Fase 4 concluída oferece a Fase 5');
+
+console.log('7d. Fase 5 — A Tempestade');
+await page.click('#complete-next');
+ok(await waitState('playing'), 'Próxima fase inicia a Fase 5');
+ok((await G('g.level.info.id')) === 5, 'Fase 5 carregada');
+await prep();
+await G('(g.level.nextStrike = 1e9, g.level.nextGust = 1e9, true)'); // determinismo: o clima só age quando o teste manda
+ok(await G('!!g.env.rain && g.env.rain.isStarted()'), 'chuva ativa (partículas)');
+await talk(6, -80);
+ok(await until("g.quests.currentObjective('tempestade')?.id === 'folhas'", 10000), 'Beto pede folhas para a jangada');
+ok(await G("g.flags.has('betoJoined') && g.level.joined"), 'Beto passa a acompanhar Marieta');
+await page.screenshot({ path: OUT + '23-fase5-beto.png' });
+await tp(0, 0, -40);
+ok(await until("Math.hypot(g.level.npcs.find(n => n.id === 'beto').x - g.body.x, g.level.npcs.find(n => n.id === 'beto').z - g.body.z) < 8", 30000), 'Beto segue Marieta até perto dela');
+// Raio: círculo de aviso, depois dano a quem fica dentro; fora do círculo, nada
+await G("(g.level.strike(g.body.x + 20, g.body.z), true)");
+await sleep(4500);
+ok((await G('g.hearts')) === 3, 'raio que cai longe não machuca');
+await G("(g.level.strike(g.body.x, g.body.z), true)");
+ok(await until('g.hearts === 2', 30000), 'raio que cai sobre Marieta tira um coração');
+await until("document.getElementById('fade').classList.contains('on') === false", 5000);
+// Vento: empurra no aberto, não debaixo de uma folha
+await tp(0, 0, -40); await sleep(500);
+const x0 = await G('g.body.x');
+await G('(g.level.gust(1, 0), true)'); await sleep(3200);
+const dxOpen = (await G('g.body.x')) - x0;
+ok(dxOpen > 2.5, `rajada empurra Marieta no aberto (${dxOpen.toFixed(1)} u)`);
+await tp(-16, 0, -60); await sleep(500);
+const y0 = await G('g.body.x');
+await G('(g.level.gust(1, 0), true)'); await sleep(3200);
+const dxCover = (await G('g.body.x')) - y0;
+ok(dxCover < 0.5, `sob a folha, a rajada não a empurra (${dxCover.toFixed(1)} u)`);
+const lv = await G("g.level.pickups.filter(p => p.def.kind === 'leaf').map(p => [p.def.x, p.def.y, p.def.z])");
+for (let i = 0; i < lv.length; i++) { const [x, y, z] = lv[i]; await tp(x, y, z); await until(`g.inventory.count('leaf') >= ${i + 1}`, 8000); }
+ok((await G("g.inventory.count('leaf')")) === 3, 'juntou 3 folhas firmes');
+await tp(0, 0, 4.5); await until("!document.getElementById('prompt').classList.contains('hidden')");
+await page.keyboard.press('e');
+ok(await until('g.level.raftBuilt'), 'jangada construída com Beto');
+await sleep(2500);
+await page.screenshot({ path: OUT + '24-fase5-jangada.png' });
+await tp(0, 0, 1);
+await page.keyboard.down('Shift'); await page.keyboard.down('w');
+ok(await until("g.quests.currentObjective('tempestade')?.id === 'zuzu'", 60000), 'atravessa a enchente a pé pela jangada');
+await page.keyboard.up('w'); await page.keyboard.up('Shift');
+ok((await G('g.hearts')) === 2, 'chegou à colina sem se machucar na travessia');
+await talk(7, 52);
+ok(await waitState('complete'), 'falar com Zuzu conclui a Fase 5');
+await page.screenshot({ path: OUT + '25-fase5-vitoria.png' });
+ok(!(await page.isVisible('#complete-next')), 'Fase 5 é a última disponível: sem botão de próxima fase');
 
 console.log('8. Rio: correnteza, resgate e coração');
 await page.click('#complete-menu');
 ok(await waitState('menu'), 'volta ao menu');
-ok((await page.locator('.phase:not(.locked)').count()) === 4, 'seleção de fases mostra 4 fases liberadas');
+ok((await page.locator('.phase:not(.locked)').count()) === 5, 'seleção de fases mostra 5 fases liberadas');
 page.once('dialog', (d) => d.accept());
 await page.locator('.phase').nth(1).click();
 ok(await waitState('playing'), 'iniciar a Fase 2 pela seleção');

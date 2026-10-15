@@ -86,3 +86,24 @@ export const LEVEL4_QUESTS: QuestDef[] = [
     objectives: [{ id: 'cr', text: 'Encontre os cristais escondidos na colônia', type: 'collect', target: 'crystal', count: 2 }],
   },
 ];
+
+/** Missões da Fase 5 — A Tempestade (Grande Prova). */
+export const LEVEL5_QUESTS: QuestDef[] = [
+  {
+    id: 'tempestade',
+    title: 'Enfrentar a tempestade',
+    objectives: [
+      { id: 'beto', text: 'Abrigue-se e converse com Beto', type: 'talk', target: 'beto' },
+      { id: 'folhas', text: 'Junte folhas firmes para a jangada', type: 'collect', target: 'leaf', count: 3 },
+      { id: 'jangada', text: 'Construa a jangada com Beto, na beira da enchente', type: 'interact', target: 'raft' },
+      { id: 'colina', text: 'Atravesse a enchente até a colina', type: 'reach', target: 'hill' },
+      { id: 'zuzu', text: 'Converse com Zuzu, a lagarta', type: 'talk', target: 'zuzu' },
+    ],
+  },
+  {
+    id: 'chuva_cristais',
+    title: 'Cristais da chuva',
+    optional: true,
+    objectives: [{ id: 'cr', text: 'Encontre os cristais que a chuva revelou', type: 'collect', target: 'crystal', count: 2 }],
+  },
+];

@@ -177,7 +177,7 @@ export class Level3 extends LevelBase {
     this.updateCommon(dt, playerPos, observing, toneByPostFx);
     this.follow.copyFrom(playerPos);
     const covered = this.world.isCovered(playerPos.x, playerPos.z, playerPos.y);
-    if (this.patrol.update(dt, playerPos, covered) === 'seen') this.hazard = 'A aranha-caçadora te viu!';
+    if (this.patrol.update(dt, playerPos, covered) === 'seen' && this.active) this.hazard = 'A aranha-caçadora te viu!';
     this.hunter.root.position.set(this.patrol.x, 0, this.patrol.z); this.hunter.root.rotation.y = this.patrol.yaw;
     this.hunter.setMoving(this.patrol.moving ? 4.2 : 0); this.hunter.animate(dt);
     this.gateMarker.setEnabled(observing && !this.gateOpen);

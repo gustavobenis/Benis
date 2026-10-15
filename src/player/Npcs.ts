@@ -3,7 +3,7 @@ import type { AbstractMesh, Scene } from '@babylonjs/core';
 import type { Materials } from '../levels/Materials';
 import { SnailModel } from './Marieta';
 
-export type NpcKind = 'snail' | 'ant' | 'butterfly' | 'beetle' | 'grasshopper' | 'spider' | 'queen';
+export type NpcKind = 'snail' | 'ant' | 'butterfly' | 'beetle' | 'grasshopper' | 'spider' | 'queen' | 'caterpillar';
 
 /** Contrato comum dos personagens secundários. */
 export interface NpcModel {
@@ -219,6 +219,35 @@ export class MantisModel implements NpcModel {
   }
 }
 
+/** Zuzu: lagarta engraçada, de corpo segmentado que ondula. */
+class CaterpillarNpc implements NpcModel {
+  readonly root: TransformNode; readonly meshes: AbstractMesh[] = []; hover = 0;
+  private segs: TransformNode[] = []; private t = Math.random() * 6;
+  constructor(scene: Scene, mats: Materials) {
+    this.root = new TransformNode('zuzu', scene);
+    const a = pbr(scene, 'cat1', new Color3(0.55, 0.85, 0.2), 0.45), b = pbr(scene, 'cat2', new Color3(0.9, 0.9, 0.35), 0.5);
+    const add = (m: Mesh, mat: Mesh['material'], parent: TransformNode) => { m.material = mat; m.parent = parent; this.meshes.push(m); return m; };
+    for (let i = 0; i < 6; i++) {
+      const n = new TransformNode('seg', scene); n.parent = this.root; n.position.set(0, 0.8, -i * 0.95);
+      add(sphere(scene, 1.25 - i * 0.04, 1, 0.95, 1, 0, 0, 0), i % 2 ? b : a, n);
+      for (const sx of [-1, 1]) { const l = MeshBuilder.CreateCylinder('f', { height: 0.5, diameter: 0.14, tessellation: 5 }, scene); l.position.set(sx * 0.35, -0.55, 0); add(l, a, n); }
+      this.segs.push(n);
+    }
+    const head = new TransformNode('head', scene); head.parent = this.root; head.position.set(0, 1.05, 0.95);
+    add(sphere(scene, 1.5, 1, 1, 1, 0, 0, 0), a, head);
+    for (const sx of [-1, 1]) {
+      add(sphere(scene, 0.5, 1, 1.15, 1, sx * 0.3, 0.2, 0.55), mats.white, head);
+      add(sphere(scene, 0.26, 1, 1, 0.8, sx * 0.3, 0.2, 0.76), mats.black, head);
+      const an = MeshBuilder.CreateCylinder('an', { height: 0.7, diameter: 0.06, tessellation: 5 }, scene); an.position.set(sx * 0.22, 0.85, 0.2); an.rotation.z = sx * -0.35; add(an, a, head);
+    }
+    this.root.scaling.setAll(1.1);
+  }
+  animate(dt: number) {
+    this.t += dt;
+    this.segs.forEach((n, i) => { n.position.y = 0.8 + Math.abs(Math.sin(this.t * 2.2 - i * 0.7)) * 0.22; });
+  }
+}
+
 /** Tico: gafanhoto alegre, de pernas traseiras grandes. */
 class GrasshopperNpc implements NpcModel {
   readonly root: TransformNode; readonly meshes: AbstractMesh[] = []; hover = 0;
@@ -255,6 +284,7 @@ export function createNpcModel(kind: NpcKind, scene: Scene, mats: Materials): Np
   switch (kind) {
     case 'ant': return new AntNpc(scene, mats);
     case 'queen': return new AntNpc(scene, mats, true);
+    case 'caterpillar': return new CaterpillarNpc(scene, mats);
     case 'butterfly': return new ButterflyNpc(scene, mats);
     case 'beetle': return new BeetleNpc(scene, mats);
     case 'grasshopper': return new GrasshopperNpc(scene, mats);

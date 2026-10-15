@@ -10,6 +10,7 @@ import type { GameEvent, QuestDef, QuestLog } from '../systems/Quests';
 import type { DialogueDef } from '../systems/Dialogue';
 import type { GameAudio } from '../engine/Audio';
 import type { LightPreset } from './Environment';
+import type { Difficulty } from '../systems/Settings';
 
 export interface PickupDef { id: string; kind: ItemId; x: number; y: number; z: number }
 export interface NpcDef { id: string; kind: NpcKind; name: string; x: number; z: number; yaw: number }
@@ -51,6 +52,8 @@ export interface LevelInfo {
   fog: { color: [number, number, number]; density: number };
   light: LightPreset;
   shafts: [number, number][];
+  /** Clima da fase: chuva 0..1 e vento visual nas plantas (1 = brisa). */
+  weather?: { rain: number; wind: number };
   springs: [number, number, number][];
   pickDialogue(npc: string, q: QuestLog, flags: Set<string>): DialogueDef;
   birdActive(p: { x: number; y: number; z: number }, q: QuestLog, flags: Set<string>): boolean;
@@ -72,6 +75,15 @@ export abstract class LevelBase {
   readonly casters: AbstractMesh[] = [];
   grass!: Grass;
   protected markers: Mesh[] = [];
+  /** Clarão de relâmpago (0..1) lido pelo jogo a cada quadro. */
+  flash = 0;
+  /** Vento (unidades/s) que empurra Marieta quando ela não está coberta. */
+  wind = { x: 0, z: 0 };
+  /** Fila de eventos sonoros/avisos da fase ('thunder', 'gust'), consumida pelo jogo. */
+  readonly events: string[] = [];
+  difficulty: Difficulty = 'balanced';
+  /** Verdadeiro somente enquanto o jogador está jogando (não em menu, diálogo ou pausa): perigos só contam aqui. */
+  active = false;
   protected t = 0;
   private sparkle: ParticleSystem;
   private owned: { meshes: AbstractMesh[]; materials: Material[]; textures: BaseTexture[]; lights: Light[]; nodes: TransformNode[] } = { meshes: [], materials: [], textures: [], lights: [], nodes: [] };
@@ -113,6 +125,9 @@ export abstract class LevelBase {
   /** Interação específica da fase perto de (x,z), se houver. */
   abstract interaction(x: number, z: number, host: LevelHost): Interaction | undefined;
   abstract update(dt: number, playerPos: Vector3, observing: boolean, toneByPostFx: boolean): void;
+
+  /** Chamado pelo jogo quando uma conversa com `npc` termina. */
+  talked(_npc: string): void { /* por padrão, nada */ }
 
   /** Alerta de predador da fase (0..1) para o indicador de perigo. */
   get alert(): number { return 0; }

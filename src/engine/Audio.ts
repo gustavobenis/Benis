@@ -17,6 +17,7 @@ export class GameAudio {
   private running = false;
   private settings: Settings | null = null;
   private tensionTarget = 0;
+  private rainGain: GainNode | null = null;
 
   get ready(): boolean { return !!this.ctx; }
   get hasSprings(): boolean { return this.springs.length > 0; }
@@ -83,6 +84,31 @@ export class GameAudio {
     lfo2.connect(lg2); lg2.connect(bp.frequency); lfo2.start();
     src.connect(bp); bp.connect(this.windGain); this.windGain.connect(this.buses.ambient);
   }
+
+  /** Chuva: ruído filtrado em laço, com volume 0..1. */
+  setRain(v: number): void {
+    if (!this.ctx) return;
+    if (!this.rainGain) {
+      const ctx = this.ctx; const src = this.loopNoise();
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 7000;
+      this.rainGain = ctx.createGain(); this.rainGain.gain.value = 0;
+      src.connect(hp); hp.connect(lp); lp.connect(this.rainGain); this.rainGain.connect(this.buses.ambient);
+    }
+    this.rainGain.gain.setTargetAtTime(v * 1.6, this.ctx.currentTime, 0.4);
+  }
+
+  /** Trovão: estrondo grave de ruído + queda de tom. */
+  thunder(): void {
+    if (!this.ctx) return;
+    const ctx = this.ctx; const t = ctx.currentTime + 0.12;
+    const src = ctx.createBufferSource(); src.buffer = this.noise;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(900, t); lp.frequency.exponentialRampToValueAtTime(70, t + 2.4);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(1.3, t + 0.06); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
+    src.connect(lp); lp.connect(g); g.connect(this.buses.sfx); src.start(t, Math.random() * 1.5, 2.7);
+  }
+
+  gust(): void { if (this.ctx) this.sweep(220, 520, 0.9, 0.06); }
 
   private buildTension(): void {
     const ctx = this.ctx!;

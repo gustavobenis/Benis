@@ -27,6 +27,9 @@ export class Environment {
   private dir = new Vector3(-0.45, -0.72, 0.5).normalize();
   private hemi!: HemisphericLight;
   private ssao: SSAO2RenderingPipeline | null = null;
+  private rain: ParticleSystem | null = null;
+  private rainAmount = 0; private rainRate = 400;
+  private baseExposure = 1.15;
   private t = 0;
 
   constructor(private scene: Scene, private camera: Camera) {
@@ -105,10 +108,36 @@ export class Environment {
     this.sun.diffuse = new Color3(...l.sun); this.sun.intensity = l.sunI;
     this.hemi.intensity = l.hemiI; this.hemi.diffuse = new Color3(...l.sky); this.hemi.groundColor = new Color3(...l.ground);
     const ip = this.scene.imageProcessingConfiguration;
-    ip.exposure = l.exposure; ip.contrast = l.contrast;
+    ip.exposure = l.exposure; this.baseExposure = l.exposure; ip.contrast = l.contrast;
     ip.colorCurvesEnabled = true;
     const cc = new ColorCurves(); cc.globalSaturation = l.saturation; cc.shadowsHue = l.shadowHue ?? 220; cc.shadowsSaturation = l.shadowHue ? 25 : 0; ip.colorCurves = cc;
   }
+
+  /** Chuva (0 = sem chuva). Reaproveita um único sistema de partículas que acompanha Marieta. */
+  setRain(amount: number): void {
+    this.rainAmount = amount;
+    if (amount <= 0) { this.rain?.stop(); return; }
+    if (!this.rain) {
+      const tex = new DynamicTexture('drop', { width: 8, height: 64 }, this.scene, false);
+      const c = tex.getContext() as CanvasRenderingContext2D;
+      const g = c.createLinearGradient(0, 0, 0, 64); g.addColorStop(0, 'rgba(200,225,255,0)'); g.addColorStop(1, 'rgba(210,230,255,0.9)');
+      c.fillStyle = g; c.fillRect(3, 0, 2, 64); tex.update();
+      const ps = new ParticleSystem('rain', 2200, this.scene);
+      ps.particleTexture = tex as unknown as Texture; ps.emitter = this.follow;
+      ps.minEmitBox = new Vector3(-28, 22, -28); ps.maxEmitBox = new Vector3(28, 24, 28);
+      ps.direction1 = new Vector3(-0.15, -1, 0.05); ps.direction2 = new Vector3(-0.05, -1, 0.15);
+      ps.minEmitPower = 42; ps.maxEmitPower = 55; ps.minLifeTime = 0.55; ps.maxLifeTime = 0.6;
+      ps.minSize = 0.5; ps.maxSize = 1.2; ps.minScaleY = 7; ps.maxScaleY = 11;
+      ps.billboardMode = ParticleSystem.BILLBOARDMODE_STRETCHED;
+      ps.color1 = new Color4(0.8, 0.9, 1, 0.55); ps.color2 = new Color4(0.7, 0.82, 1, 0.4); ps.colorDead = new Color4(0.7, 0.8, 1, 0);
+      ps.blendMode = ParticleSystem.BLENDMODE_STANDARD;
+      this.rain = ps;
+    }
+    this.rain.emitRate = this.rainRate * amount;
+    this.rain.start();
+  }
+  /** Relâmpago: clareia a cena brevemente (0..1). */
+  setFlash(v: number): void { this.scene.imageProcessingConfiguration.exposure = this.baseExposure + 2.2 * v; }
 
   /** Névoa e cor de fundo de cada fase. */
   setAtmosphere(color: [number, number, number], density: number): void {
@@ -147,6 +176,8 @@ export class Environment {
     this.shadows.getShadowMap()!.refreshRate = q.shadows ? RenderTargetTexture.REFRESHRATE_RENDER_ONEVERYFRAME : RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
     if (!q.shadows) { this.shadows.getShadowMap()!.renderList = []; }
     this.pollen.emitRate = Math.round(q.particles / 6);
+    this.rainRate = q.level === 'high' ? 1800 : q.level === 'balanced' ? 1000 : 450;
+    if (this.rain && this.rainAmount > 0) this.rain.emitRate = this.rainRate * this.rainAmount;
     this.pollen.manualEmitCount = 0;
     if (q.postFx) {
       if (!this.pipeline) this.pipeline = new DefaultRenderingPipeline('dr', true, this.scene, [this.camera]);

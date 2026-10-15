@@ -9,7 +9,7 @@ attribute vec3 position;
 attribute vec2 uv;
 attribute vec4 world0; attribute vec4 world1; attribute vec4 world2; attribute vec4 world3;
 attribute vec4 instanceColor;
-uniform mat4 viewProjection; uniform mat4 view; uniform float time;
+uniform mat4 viewProjection; uniform mat4 view; uniform float time; uniform float wind;
 varying vec2 vUV; varying vec4 vColor; varying float vDist;
 void main() {
   mat4 world = mat4(world0, world1, world2, world3);
@@ -18,7 +18,7 @@ void main() {
   float hs = length(world1.xyz);
   float s1 = sin(time * 1.3 + wp.x * 0.23 + wp.z * 0.17);
   float s2 = sin(time * 2.7 + wp.x * 0.7 + wp.z * 0.5);
-  float bend = h * h * hs * 0.09;
+  float bend = h * h * hs * 0.09 * wind;
   wp.x += (s1 * 0.8 + s2 * 0.25) * bend;
   wp.z += (s1 * 0.4 - s2 * 0.2) * bend;
   vec4 vp = view * wp;
@@ -55,10 +55,11 @@ export class Grass {
     Effect.ShadersStore['grassFragmentShader'] = FRAG;
     this.material = new ShaderMaterial('grass', scene, 'grass', {
       attributes: ['position', 'uv', 'world0', 'world1', 'world2', 'world3', 'instanceColor'],
-      uniforms: ['viewProjection', 'view', 'time', 'fogColor', 'fogDensity', 'manualTone'],
+      uniforms: ['viewProjection', 'view', 'time', 'wind', 'fogColor', 'fogDensity', 'manualTone'],
     });
     this.material.backFaceCulling = false;
     this.material.setFloat('time', 0);
+    this.material.setFloat('wind', 1);
     this.material.setColor3('fogColor', scene.fogColor);
     this.material.setFloat('fogDensity', scene.fogDensity);
     this.material.setFloat('manualTone', 1);
@@ -117,6 +118,8 @@ export class Grass {
   total = 0;
 
   setFog(color: Color3, density: number): void { this.material.setColor3('fogColor', color); this.material.setFloat('fogDensity', density); }
+  /** Intensidade do vento nas lâminas (1 = brisa; ~3 = tempestade). */
+  setWind(w: number): void { this.material.setFloat('wind', w); }
   setCount(n: number): void { this.mesh.thinInstanceCount = Math.min(n, this.total); }
   update(time: number, manualTone: boolean): void {
     this.material.setFloat('time', time);

@@ -207,3 +207,45 @@ export function pickColonyDialogue(npc: string, q: QuestLog): DialogueDef {
   if (st.status === 'active' && st.objective < 4) return C.rainha_early;
   return C.rainha_after;
 }
+
+const S: Record<string, DialogueDef> = {
+  beto_intro: {
+    id: 'beto_intro', speaker: 'Beto',
+    lines: [
+      'Marieta! Aqui, debaixo da folha! Venha, a chuva está cada vez mais forte.',
+      'Eu disse que a gente se veria de novo. Desta vez, não vou deixar você enfrentar isso sozinha.',
+      'A enchente cortou o caminho para a colina, onde o resto da comunidade se abrigou. Precisamos de três folhas firmes para fazer uma jangada.',
+      'Cuidado com as rajadas de vento e com os raios: um círculo brilhante no chão avisa onde vai cair. Saia de dentro dele! Fique sob as folhas quando puder.',
+      'Eu vou com você. Fazemos isso juntos.',
+    ],
+    onEnd: ['talk:beto', 'flag:betoJoined'],
+  },
+  beto_again: { id: 'beto_again', speaker: 'Beto', lines: ['Três folhas firmes para a jangada. Estou logo atrás de você, Marieta!'] },
+  beto_raft: { id: 'beto_raft', speaker: 'Beto', lines: ['As folhas! Venha até a beira da enchente, e eu seguro enquanto você encaixa.'] },
+  beto_after: { id: 'beto_after', speaker: 'Beto', lines: ['Conseguimos juntos! Agora vamos até a colina, antes que a água suba mais.'] },
+  zuzu_early: { id: 'zuzu_early', speaker: 'Zuzu', lines: ['Aqui, aqui! Eu sou a Zuzu! Atravesse a enchente e venha conversar!'] },
+  zuzu_intro: {
+    id: 'zuzu_intro', speaker: 'Zuzu',
+    lines: [
+      'Vocês conseguiram! Eu sou a Zuzu, a lagarta mais engraçada da mata. Estávamos todos preocupados!',
+      'Ver vocês dois atravessando juntos, debaixo daquela chuva… ninguém esquece uma coisa dessas.',
+      'A tempestade vai passar. E depois dela, um vale cheio de flores nos espera. Venham!',
+    ],
+    onEnd: ['talk:zuzu'],
+  },
+  zuzu_after: { id: 'zuzu_after', speaker: 'Zuzu', lines: ['A chuva já está diminuindo. Depois da tempestade, vem a esperança!'] },
+};
+
+/** Diálogos da Fase 5 conforme o estado das missões. */
+export function pickStormDialogue(npc: string, q: QuestLog): DialogueDef {
+  const st = q.state('tempestade');
+  if (npc === 'beto') {
+    if (st.status === 'active' && st.objective === 0) return S.beto_intro;
+    if (st.status === 'active' && st.objective === 1) return S.beto_again;
+    if (st.status === 'active' && st.objective === 2) return S.beto_raft;
+    return S.beto_after;
+  }
+  if (st.status === 'active' && st.objective === 4) return S.zuzu_intro;
+  if (st.status === 'active' && st.objective < 4) return S.zuzu_early;
+  return S.zuzu_after;
+}
