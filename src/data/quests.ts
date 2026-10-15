@@ -153,3 +153,24 @@ export const LEVEL7_QUESTS: QuestDef[] = [
     ],
   },
 ];
+
+/** Missões da Fase 8 — Juntos Sempre (O Vale do Novo Amanhecer). */
+export const LEVEL8_QUESTS: QuestDef[] = [
+  {
+    id: 'amanhecer',
+    title: 'Juntos Sempre',
+    objectives: [
+      { id: 'rita', text: 'Converse com Rita e a comunidade', type: 'talk', target: 'rita' },
+      { id: 'fotos', text: 'Registre 4 fotos dos amigos da jornada', type: 'collect', target: 'photo', count: 4 },
+      { id: 'mural', text: 'Monte o mural da jornada na praça', type: 'interact', target: 'board' },
+      { id: 'nascer', text: 'Suba ao mirante para ver o sol nascer', type: 'reach', target: 'sunrise' },
+      { id: 'beto', text: 'Encontre Beto no mirante', type: 'talk', target: 'beto' },
+    ],
+  },
+  {
+    id: 'flores_final',
+    title: 'Flores para a festa',
+    optional: true,
+    objectives: [{ id: 'fl', text: 'Colete 2 flores raras para enfeitar o vale', type: 'collect', target: 'flower', count: 2 }],
+  },
+];

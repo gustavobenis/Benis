@@ -70,6 +70,35 @@ const steps = {
     ok(await waitState('complete'), 'falar com Beto conclui a Fase 7');
     await page.screenshot({ path: OUT + 'p7-vitoria.png' });
   },
+  8: async () => {
+    await talk(8, -79);
+    ok(await until("g.quests.currentObjective('amanhecer')?.id === 'fotos'", 10000), 'Rita convida a montar o mural');
+    // Conversa com um dos amigos reunidos (diálogos individuais)
+    await talk(-17, -49);
+    await page.screenshot({ path: OUT + 'p8-amigos.png' });
+    await collect('photo', 4);
+    ok((await G("g.inventory.count('photo')")) === 4, 'registrou 4 fotos dos amigos');
+    await tp(0, 0, 58); await until("!document.getElementById('prompt').classList.contains('hidden')");
+    await page.keyboard.press('e');
+    ok(await until('g.level.boardBuilt'), 'mural da jornada montado na praça');
+    await sleep(2500);
+    await page.screenshot({ path: OUT + 'p8-mural.png' });
+    await tp(0, 0, 84);
+    ok(await until("g.quests.currentObjective('amanhecer')?.id === 'beto'", 15000), 'chegou ao mirante do nascer do sol');
+    // Cena final: câmera de cinema orbitando o casal
+    await tp(1.5, 0, 85);
+    await until("!document.getElementById('prompt').classList.contains('hidden')");
+    await page.keyboard.press('e');
+    ok(await waitState('dialogue'), 'cena final com Beto começa');
+    ok(await G('g.cinematic === true && g.rig.mode === "orbital"'), 'câmera de cinema ativa (orbital)');
+    const yaw0 = await G('g.rig.yaw'); await sleep(2500);
+    ok(Math.abs((await G('g.rig.yaw')) - yaw0) > 0.1, 'a câmera orbita o casal durante a cena');
+    await page.screenshot({ path: OUT + 'p8-cena-final.png' });
+    await finishDialogue(); 
+    ok(await waitState('complete'), 'o final conclui a Fase 8 e o jogo');
+    await page.screenshot({ path: OUT + 'p8-fim.png' });
+    ok(!(await page.isVisible('#complete-next')), 'não há próxima fase: é o final');
+  },
 };
 if (!steps[PHASE]) { console.log(`Sem roteiro para a fase ${PHASE}`); failed++; } else await steps[PHASE]();
 

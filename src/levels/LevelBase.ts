@@ -61,6 +61,8 @@ export interface LevelInfo {
   rescue?: { x: number; z: number; npc: string };
   /** Pontos de interação para o indicador de objetivo (alvos `interact`). */
   interactPoints: Record<string, { x: number; z: number }>;
+  /** Cena de cinema: durante este diálogo a câmera orbita o casal (npc + objetivo ativo). */
+  cinematic?: { npc: string; objective: string };
   onTalk?(npc: string, host: LevelHost): void;
 }
 

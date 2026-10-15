@@ -345,3 +345,53 @@ export function pickNestDialogue(npc: string, q: QuestLog, flags: Set<string>): 
   if (st.status === 'active' && st.objective < 5) return N.beto_early;
   return N.beto_nest_after;
 }
+
+const E: Record<string, DialogueDef> = {
+  rita_intro: {
+    id: 'rita_intro', speaker: 'Rita',
+    lines: [
+      'Marieta! Todos já estão aqui, no Vale do Novo Amanhecer. Ninguém quis perder o dia em que a mata ganhou um novo lar.',
+      'Cada um aqui tem uma lembrança sua: o Tito, o Lino, a Luna, o Tico, a Dona Olívia, a Zuzu, o Freddy, o Sr. Caramujo e até o Dário.',
+      'Que tal tirar uma foto de cada grupo e montar um mural na praça? Assim ninguém esquece essa jornada.',
+    ],
+    onEnd: ['talk:rita'],
+  },
+  rita_again: { id: 'rita_again', speaker: 'Rita', lines: ['Quatro fotos: os grupos de amigos estão espalhados pelo vale. Depois monte o mural na praça!'] },
+  rita_after: { id: 'rita_after', speaker: 'Rita', lines: ['O mural ficou lindo! Agora suba ao mirante: o sol já vai nascer, e o Beto está esperando você.'] },
+  tito: { id: 'tito', speaker: 'Tito', lines: ['Lembro quando você caiu do céu depois da tempestade. Hoje vejo uma joaninha que lidera uma comunidade.'] },
+  lino: { id: 'lino', speaker: 'Lino', lines: ['Trabalhar em equipe é a melhor ponte, Marieta. Você me ensinou isso.'] },
+  luna: { id: 'luna', speaker: 'Luna', lines: ['Lá de cima, vi vocês crescerem a cada fase. Foi lindo acompanhar essa jornada.'] },
+  tico: { id: 'tico', speaker: 'Tico', lines: ['Pulo, pulo, pulo de alegria! A floresta nunca esteve tão animada!'] },
+  olivia: { id: 'olivia', speaker: 'Dona Olívia', lines: ['As teias que protegem este vale foram tecidas pensando em vocês. Fiquem seguros.'] },
+  zuzu: { id: 'zuzu', speaker: 'Zuzu', lines: ['Eu disse que depois da tempestade viria a esperança! E olha só quanta gente!'] },
+  freddy: { id: 'freddy', speaker: 'Freddy', lines: ['Compus uma nova canção. Ela se chama "Juntos Sempre". Você vai ouvi-la ao nascer do sol.'] },
+  caramujo: { id: 'caramujo', speaker: 'Sr. Caramujo', lines: ['Devagar e sempre, jovem. Um lar se faz com paciência e boas companhias.'] },
+  dario: { id: 'dario', speaker: 'Dário', lines: ['Obrigado por ter confiado em mim. Hoje eu sei o valor de dividir.'] },
+  beto_final: {
+    id: 'beto_final', speaker: 'Beto',
+    lines: [
+      'Chegou! Venha ver o sol nascer comigo, Marieta.',
+      'Quando te vi na correnteza pela primeira vez, eu só queria te ajudar. Hoje percebo que você nunca precisou ser salva: você me ensinou a ser corajoso.',
+      'Cada fase, cada ponte, cada tempestade… eu quis estar ao seu lado em todas. E quero continuar, em todas as que vierem.',
+      'Marieta, quer construir o futuro comigo? Juntos, sempre.',
+      'Então é isso: o sol está nascendo, o vale está florido e o ninho está de pé. A grande aventura na mata foi só o começo da nossa história.',
+    ],
+    onEnd: ['talk:beto'],
+  },
+  beto_final_after: { id: 'beto_final_after', speaker: 'Beto', lines: ['Juntos, sempre. Quer ver o nascer do sol mais uma vez?'] },
+};
+
+/** Diálogos da Fase 8 conforme o estado das missões. */
+export function pickDawnDialogue(npc: string, q: QuestLog): DialogueDef {
+  const st = q.state('amanhecer');
+  if (npc === 'rita') {
+    if (st.status === 'active' && st.objective === 0) return E.rita_intro;
+    if (st.status === 'active' && st.objective < 3) return E.rita_again;
+    return E.rita_after;
+  }
+  if (npc === 'beto') {
+    if (st.status === 'active' && st.objective === 4) return E.beto_final;
+    return E.beto_final_after;
+  }
+  return E[npc] ?? E.rita_after;
+}

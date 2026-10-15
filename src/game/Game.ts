@@ -15,6 +15,7 @@ import { Level4 } from '../levels/Level4';
 import { Level5 } from '../levels/Level5';
 import { Level6 } from '../levels/Level6';
 import { Level7 } from '../levels/Level7';
+import { Level8 } from '../levels/Level8';
 import { MarietaModel } from '../player/Marieta';
 import { BirdShadow } from './BirdShadow';
 import { QuestLog, type QuestNotice } from '../systems/Quests';
@@ -40,6 +41,7 @@ const LEVELS: Record<number, (scene: Scene, grass: number) => LevelBase> = {
   5: (s, g) => new Level5(s, g),
   6: (s, g) => new Level6(s, g),
   7: (s, g) => new Level7(s, g),
+  8: (s, g) => new Level8(s, g),
 };
 
 /** Habilidades aprendidas na Fase 1 (Tito) valem para as fases seguintes. */
@@ -272,9 +274,10 @@ export class Game {
       4: { title: 'Fase concluída!', text: 'A Rainha agradeceu à joaninha. O céu escurece: a grande tempestade chegou.', note: 'Fase 5 liberada: A Tempestade' },
       5: { title: 'Fase concluída!', text: 'Marieta e Beto atravessaram a enchente juntos e Zuzu os recebeu na colina. A tempestade passou: adiante, um vale à espera de flores.', note: 'Fase 6 liberada: O Vale das Flores' },
       6: { title: 'Fase concluída!', text: 'O vale floresceu e Freddy tocou a canção da esperança ao pôr do sol. Adiante, o Ninho Verde espera por um novo lar.', note: 'Fase 7 liberada: O Ninho Verde' },
-      7: { title: 'Obrigado por jogar!', text: 'O Ninho Verde está de pé e a comunidade tem um novo lar. Amanhã, no Vale do Novo Amanhecer, a aventura chega ao fim.', note: 'Fim da demo atual — falta a Fase 8.' },
+      7: { title: 'Fase concluída!', text: 'O Ninho Verde está de pé e a comunidade tem um novo lar. Amanhã, no Vale do Novo Amanhecer, a aventura chega ao seu momento mais bonito.', note: 'Fase 8 liberada: Juntos Sempre' },
+      8: { title: 'Obrigado por jogar!', text: 'Marieta e Beto viram o sol nascer cercados pelos amigos. A grande aventura na mata foi só o começo da história deles. Juntos, sempre.', note: 'Fim da jornada. Você pode explorar o vale livremente ou rever qualquer fase.' },
     };
-    const o = OUT[id] ?? OUT[7];
+    const o = OUT[id] ?? OUT[8];
     this.ui.complete({ title: o.title, text: o.text, stats: `${stats}<br><small>${o.note}</small>`, next: hasNext, final: !hasNext });
     this.ui.setTouch(false); this.ui.prompt(null); void this.flushSave();
   }
@@ -401,7 +404,10 @@ export class Game {
 
   private updateWorld(dt: number, speed01: number): void {
     const b = this.body, feet = new Vector3(b.x, b.y, b.z);
-    this.rig.update(dt, feet, speed01);
+    // Cena de cinema: a câmera enquadra o casal (ponto médio entre Marieta e o parceiro)
+    const partner = this.cinematic ? this.level.npcs.find((n) => n.id === this.talkingTo) : undefined;
+    const focus = partner ? new Vector3((b.x + partner.x) / 2, b.y, (b.z + partner.z) / 2) : feet;
+    this.rig.update(dt, focus, speed01);
     this.env.update(dt, feet);
     this.level.active = this.state === 'playing';
     this.level.update(dt, feet, this.observing, this.env.hasPipeline);
@@ -528,9 +534,12 @@ export class Game {
   }
 
   /* ---------- diálogo ---------- */
-  private talkingTo = '';
+  private talkingTo = ''; private cinematic = false; private prevMode: 'third' | 'first' | 'orbital' = 'third';
   private startDialogue(npcId: string): void {
     this.talkingTo = npcId;
+    const cin = this.level.info.cinematic;
+    this.cinematic = !!cin && cin.npc === npcId && this.quests.currentObjective(this.level.info.mainQuest)?.id === cin.objective;
+    if (this.cinematic) { this.prevMode = this.rig.mode; this.rig.setMode('orbital'); this.rig.look(0, 0, -6); this.rig.pitch = 0.2; }
     const d = this.level.info.pickDialogue(npcId, this.quests, this.flags, this.inventory);
     this.dialogue.start(d); this.state = 'dialogue'; this.input.enabled = false;
     this.ui.prompt(null); this.ui.showDialogue(d.speaker, this.dialogue.line); this.audio.interact();
@@ -541,6 +550,7 @@ export class Game {
     const actions = this.dialogue.advance();
     if (actions === null) { this.ui.showDialogue(this.dialogue.speaker, this.dialogue.line); return; }
     this.ui.hideDialogue(); this.state = 'playing'; this.input.enabled = true;
+    if (this.cinematic) { this.cinematic = false; this.rig.setMode(this.prevMode); }
     for (const a of actions) this.runAction(a);
     this.level.talked(this.talkingTo, this.flags);
     this.queueSave();
@@ -553,6 +563,7 @@ export class Game {
   }
   private updateDialogue(dt: number, f: InputFrame): void {
     this.ui.tickDialogue(dt);
+    if (this.cinematic) this.rig.yaw += dt * 0.2;
     if (f.advance) this.advanceDialogue();
     if (f.pause) this.pause();
     this.updateWorld(dt, 0);
