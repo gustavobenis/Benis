@@ -25,6 +25,8 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 
 const G = (expr) => page.evaluate(`(() => { const g = window.__marieta; return ${expr}; })()`);
 const state = () => G('g.state');
+/** Avança o diálogo uma tecla por vez, sem reabrir a conversa ao terminar. */
+const finishDialogue = async () => { for (let i = 0; i < 60; i++) { if ((await state()) !== 'dialogue') return; await page.keyboard.press('e'); await sleep(250); } };
 const until = async (expr, ms = 15000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await G(expr)) return true; await sleep(100); } return false; };
 const waitState = async (s, ms = 20000) => { const t = Date.now(); while (Date.now() - t < ms) { if ((await state()) === s) return true; await sleep(100); } return false; };
 const tp = (x, y, z) => G(`(g.body.x=${x}, g.body.y=${y}, g.body.z=${z}, g.body.vx=0, g.body.vy=0, g.body.vz=0, true)`);
@@ -86,7 +88,7 @@ ok(await until("!document.getElementById('prompt').classList.contains('hidden')"
 await page.keyboard.press('e');
 ok(await waitState('dialogue'), 'E inicia o diálogo');
 await page.screenshot({ path: OUT + '07-dialogo.png' });
-for (let i = 0; i < 14 && (await state()) === 'dialogue'; i++) { await page.keyboard.press('e'); await sleep(120); await page.keyboard.press('e'); await sleep(120); }
+await finishDialogue();
 ok((await state()) === 'playing', 'diálogo termina');
 ok(await G("g.flags.has('glide')"), 'Tito ensina a planar');
 ok((await G("g.quests.currentObjective('jardim').id")) === 'gotas', 'objetivo avança para coletar gotas');
@@ -150,7 +152,7 @@ const talk = async (x, z) => {
   await until("!document.getElementById('prompt').classList.contains('hidden')");
   await page.keyboard.press('e');
   ok(await waitState('dialogue'), `diálogo inicia em (${x}, ${z})`);
-  for (let i = 0; i < 14 && (await state()) === 'dialogue'; i++) { await page.keyboard.press('e'); await sleep(120); await page.keyboard.press('e'); await sleep(120); }
+  await finishDialogue();
   await waitState('playing');
 };
 await talk(10, -13);
@@ -191,12 +193,13 @@ ok(await G("g.flags.has('glide')"), 'habilidade de planar (aprendida na Fase 1) 
 await prep();
 await G('(g.bird.nextAt = 1e9, true)'); // determinismo: sem pássaro durante os testes da floresta
 await talk(8, -77);
-ok((await G("g.quests.currentObjective('floresta').id")) === 'cristais', 'Tico pede os cristais de luz');
+ok(await until("g.quests.currentObjective('floresta')?.id === 'cristais'", 10000), 'Tico pede os cristais de luz');
 await page.screenshot({ path: OUT + '16-fase3-tico.png' });
 // Cogumelo-trampolim: pousar na copa lança Marieta para o alto (física real)
+await G("(window.__maxY = 0, window.__tr && clearInterval(window.__tr), window.__tr = setInterval(() => { window.__maxY = Math.max(window.__maxY, g.body.y); }, 16), true)");
 await tp(-25, 7, -57);
-let apex = 0; const t0 = Date.now();
-while (Date.now() - t0 < 20000 && apex < 8.5) { apex = Math.max(apex, await G('g.body.y')); await sleep(60); }
+await sleep(7000);
+const apex = await G('window.__maxY');
 ok(apex > 8.5, `cogumelo cor-de-rosa funciona como trampolim (ápice ${apex.toFixed(1)})`);
 await page.screenshot({ path: OUT + '17-fase3-trampolim.png' });
 // Teia pegajosa
@@ -208,7 +211,7 @@ await G("(g.level.patrol.x = -12, g.level.patrol.z = -50, g.level.patrol.yaw = 0
 await tp(-12, 0, -36); // sob o tronco suspenso
 await sleep(4000);
 ok((await G('g.hearts')) === 3, 'sob o tronco, a aranha-caçadora não vê Marieta');
-await tp(-12, 0, -61); await G("(g.level.patrol.x = -12, g.level.patrol.z = -50, g.level.patrol.yaw = 0, g.level.patrol.wait = 1e9, true)");
+await tp(-12, 0, -61); await G("(g.level.patrol.x = -12, g.level.patrol.z = -72, g.level.patrol.yaw = 0, g.level.patrol.wait = 1e9, true)");
 ok(await until('g.hearts === 2', 30000), 'a céu aberto, a aranha-caçadora vê Marieta e custa um coração');
 await until("document.getElementById('fade').classList.contains('on') === false", 5000);
 await G("(g.level.patrol.wait = 1e9, true)");
@@ -241,7 +244,7 @@ await tp(0, 0, 10);
 ok(await waitState('dialogue', 30000), 'primeira queda no rio: Beto resgata Marieta (diálogo)');
 ok(Math.hypot((await G('g.body.x')) - 9, (await G('g.body.z')) - 42) < 3, 'resgatada na outra margem, perto do Beto');
 ok((await G('g.hearts')) === 3, 'o resgate não custa coração');
-for (let i = 0; i < 14 && (await state()) === 'dialogue'; i++) { await page.keyboard.press('e'); await sleep(120); await page.keyboard.press('e'); await sleep(120); }
+await finishDialogue();
 await waitState('playing');
 await page.screenshot({ path: OUT + '15-fase2-resgate.png' });
 await tp(0, 0, 10);

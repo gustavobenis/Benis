@@ -6,7 +6,7 @@ export const START = { x: 0, z: -90 };
 export const GATE = { x: 0, z: 62, hx: 4.5, hz: 1.4, h: 22 };
 export const ALTAR = { x: 0, z: 50, r: 7 };
 export const CLEARING = { id: 'clearing', x: 0, z: 78, r: 8 };
-const BOUNCE = 15.5;
+const BOUNCE = 17;
 
 /** Troncos suspensos: túneis de sombra por onde se passa embaixo ou se anda por cima. */
 export const RAISED_LOGS: { x: number; z: number; hx: number; hz: number; yaw: number; yBase: number; yTop: number }[] = [
