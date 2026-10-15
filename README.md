@@ -3,7 +3,7 @@
 Aventura 3D de navegador protagonizada por **Marieta**, uma joaninha que atravessa a mata na escala de um inseto.
 Stack: **Babylon.js + TypeScript + Vite** (sem servidor; progresso salvo localmente em IndexedDB).
 
-> **Estado atual: protótipo jogável das Fases 1 (O Jardim) e 2 (O Rio — Novos Amigos).** As Fases 3–8 ainda não existem.
+> **Estado atual: protótipo jogável das Fases 1 (O Jardim), 2 (O Rio) e 3 (A Floresta).** As Fases 4–8 ainda não existem.
 > Veja [o que está e o que não está pronto](#estado-do-projeto).
 
 ## Rodar no computador (Windows, macOS, Linux)
@@ -61,6 +61,9 @@ Abra com `/?debug` para expor `window.__marieta` (usado pelos testes).
 **Fase 2 — O Rio:** converse com Lino (formiga) → colete 3 folhas especiais → construa a ponte → atravesse e fale com Luna
 (borboleta) → encontre Beto (besouro). A água arrasta: depois de ~2 s Marieta é levada pela correnteza (a primeira vez, Beto a
 resgata; depois custa um coração). Dá para cruzar sem ponte por pedras (precisão) ou folhas flutuantes (móveis).
+**Fase 3 — A Floresta:** converse com Tico (gafanhoto) → colete 3 cristais de luz nas alturas (quique nos cogumelos cor-de-rosa e
+use as asas) → acenda o altar para romper a muralha de teia → chegue à clareira e fale com Dona Olívia (aranha protetora).
+A aranha-caçadora (olhos vermelhos) patrulha o centro e enxerga bem de frente: esconda-se sob os troncos. Teias deixam você lenta.
 **Vida:** 3 corações; o pássaro e a correnteza tiram um, gotas de orvalho devolvem um. Sem game over.
 
 **Fase 1:** converse com Tito → colete 5 gotas de orvalho → molhe a folha-portão → chegue ao abrigo.
@@ -79,8 +82,9 @@ Opcional: 3 sementes escondidas. Cuidado com a **sombra do pássaro**: esconda-s
 | Fase 2 (rio, Lino, Luna, Beto, ponte, 6 tipos de colecionáveis) | ✅ jogável de ponta a ponta (e2e) |
 | Interface conforme a arte de referência (HUD, minimapa circular, seleção de fases, coleção, vitória) | ✅ implementada a partir do design no Claude Design; **não é pixel-idêntica** à imagem |
 | Áudio procedural (vento, pássaros, passos, música generativa, 3D espacial) | ⚠️ implementado; **não auditado auditivamente** (ambiente de teste sem áudio) |
-| Qualidade gráfica auto/eco/equilibrada/alta | ⚠️ implementada; **FPS real não medido** (só havia GPU por software) |
-| Fases 3–8, demais amigos (Tico, Dona Olívia, Zuzu, Freddy, Rita, Sr. Caramujo), Dário, romance | ❌ não iniciado |
+| Qualidade gráfica auto/eco/equilibrada/alta (alta inclui SSAO e luz/gradação por fase) | ⚠️ implementada; **FPS real e SSAO não medidos/vistos em GPU real** (só havia renderização por software) |
+| Fase 3 (floresta, trampolins, teias, aranha-caçadora, altar, Tico, Dona Olívia) | ✅ jogável de ponta a ponta (e2e) |
+| Fases 4–8, demais amigos (Zuzu, Freddy, Rita, Sr. Caramujo), Dário, romance | ❌ não iniciado |
 | Modelos Blender/GLB, animações autorais, gravações de áudio | ❌ arte atual é procedural (placeholder de qualidade de protótipo) |
 | Testes em iPhone/Safari e Android reais | ❌ pendente |
 
