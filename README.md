@@ -3,7 +3,7 @@
 Aventura 3D de navegador protagonizada por **Marieta**, uma joaninha que atravessa a mata na escala de um inseto.
 Stack: **Babylon.js + TypeScript + Vite** (sem servidor; progresso salvo localmente em IndexedDB).
 
-> **Estado atual: protótipo jogável das Fases 1 (O Jardim), 2 (O Rio) e 3 (A Floresta).** As Fases 4–8 ainda não existem.
+> **Estado atual: protótipo jogável das Fases 1 (O Jardim), 2 (O Rio), 3 (A Floresta) e 4 (A Colônia).** As Fases 5–8 ainda não existem.
 > Veja [o que está e o que não está pronto](#estado-do-projeto).
 
 ## Rodar no computador (Windows, macOS, Linux)
@@ -64,6 +64,9 @@ resgata; depois custa um coração). Dá para cruzar sem ponte por pedras (preci
 **Fase 3 — A Floresta:** converse com Tico (gafanhoto) → colete 3 cristais de luz nas alturas (quique nos cogumelos cor-de-rosa e
 use as asas) → acenda o altar para romper a muralha de teia → chegue à clareira e fale com Dona Olívia (aranha protetora).
 A aranha-caçadora (olhos vermelhos) patrulha o centro e enxerga bem de frente: esconda-se sob os troncos. Teias deixam você lenta.
+**Fase 4 — A Colônia:** converse com Lino → recolha 4 sementes (uma está no topo do formigueiro, que se escala com saltos) →
+abasteça o celeiro para abrir a barricada de gravetos → chegue à câmara e fale com a Rainha Formiga. Um louva-a-deus de grande
+alcance patrulha o centro: use os túneis de terra como cobertura. Formigas operárias carregam folhas pelas trilhas.
 **Vida:** 3 corações; o pássaro e a correnteza tiram um, gotas de orvalho devolvem um. Sem game over.
 
 **Fase 1:** converse com Tito → colete 5 gotas de orvalho → molhe a folha-portão → chegue ao abrigo.
@@ -84,7 +87,8 @@ Opcional: 3 sementes escondidas. Cuidado com a **sombra do pássaro**: esconda-s
 | Áudio procedural (vento, pássaros, passos, música generativa, 3D espacial) | ⚠️ implementado; **não auditado auditivamente** (ambiente de teste sem áudio) |
 | Qualidade gráfica auto/eco/equilibrada/alta (alta inclui SSAO e luz/gradação por fase) | ⚠️ implementada; **FPS real e SSAO não medidos/vistos em GPU real** (só havia renderização por software) |
 | Fase 3 (floresta, trampolins, teias, aranha-caçadora, altar, Tico, Dona Olívia) | ✅ jogável de ponta a ponta (e2e) |
-| Fases 4–8, demais amigos (Zuzu, Freddy, Rita, Sr. Caramujo), Dário, romance | ❌ não iniciado |
+| Fase 4 (formigueiro, louva-a-deus, celeiro, Rainha Formiga, Lino) | ✅ jogável de ponta a ponta (e2e) |
+| Fases 5–8 (Tempestade, Vale das Flores, Ninho Verde, Juntos Sempre), demais amigos (Zuzu, Freddy, Rita, Sr. Caramujo), Dário, romance | ❌ não iniciado |
 | Modelos Blender/GLB, animações autorais, gravações de áudio | ❌ arte atual é procedural (placeholder de qualidade de protótipo) |
 | Testes em iPhone/Safari e Android reais | ❌ pendente |
 
