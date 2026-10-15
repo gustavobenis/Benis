@@ -206,8 +206,12 @@ export class Level5 extends LevelBase {
     if (beto && this.joined) {
       const dx = playerPos.x - beto.x, dz = playerPos.z - beto.z, d = Math.hypot(dx, dz);
       if (d > 40) { beto.x = playerPos.x - 3; beto.z = playerPos.z - 3; }
-      else if (d > 3.6) {
-        const nx = beto.x + (dx / d) * Math.min(d - 3.2, 9 * dt), nz = beto.z + (dz / d) * Math.min(d - 3.2, 9 * dt);
+      else if (d > 4.2) {
+        // Acompanha ao lado (na diagonal), não atrás: assim não tapa a câmera, que fica atrás de Marieta
+        const ux = dx / d, uz = dz / d;
+        const tx = playerPos.x - ux * 2 + -uz * 2.6, tz = playerPos.z - uz * 2 + ux * 2.6;
+        const ex = tx - beto.x, ez = tz - beto.z, ed = Math.hypot(ex, ez) || 1, step = Math.min(ed, 9 * dt);
+        const nx = beto.x + (ex / ed) * step, nz = beto.z + (ez / ed) * step;
         if (!this.world.waterAt(nx, nz)) { beto.x = nx; beto.z = nz; }
       }
       const gy = this.world.groundAt(beto.x, beto.z, 1, 0.5).y;
