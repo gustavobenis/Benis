@@ -144,6 +144,7 @@ ok(await waitState('playing'), 'Próxima fase inicia a Fase 2');
 ok((await G('g.level.info.id')) === 2, 'Fase 2 carregada');
 ok((await G('g.hearts')) === 3, 'começa com 3 corações');
 await prep();
+await G('(g.bird.nextAt = 1e9, true)'); // determinismo: sem pássaro nos testes do rio
 const talk = async (x, z) => {
   await tp(x, 0, z);
   await until("!document.getElementById('prompt').classList.contains('hidden')");
@@ -235,6 +236,7 @@ page.once('dialog', (d) => d.accept());
 await page.locator('.phase').nth(1).click();
 ok(await waitState('playing'), 'iniciar a Fase 2 pela seleção');
 await prep();
+await G('(g.bird.nextAt = 1e9, true)');
 await tp(0, 0, 10);
 ok(await waitState('dialogue', 30000), 'primeira queda no rio: Beto resgata Marieta (diálogo)');
 ok(Math.hypot((await G('g.body.x')) - 9, (await G('g.body.z')) - 42) < 3, 'resgatada na outra margem, perto do Beto');
