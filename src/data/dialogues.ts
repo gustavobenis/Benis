@@ -290,3 +290,58 @@ export function pickValleyDialogue(npc: string, q: QuestLog): DialogueDef {
   if (st.status === 'active' && st.objective < 4) return V.freddy_early;
   return V.freddy_after;
 }
+
+const N: Record<string, DialogueDef> = {
+  caramujo_intro: {
+    id: 'caramujo_intro', speaker: 'Sr. Caramujo',
+    lines: [
+      'Devagar e sempre, jovem joaninha. Eu sou o Sr. Caramujo, e já vi muitas estações passarem por esta mata.',
+      'Sobreviver à tempestade foi só o começo. Agora a comunidade precisa de um lar que resista: o Ninho Verde, feito de folhas macias.',
+      'Precisamos de seis folhas: três para erguer as paredes e três para o telhado. Ninguém constrói um lar sozinho, mas alguém tem que começar.',
+      'Ah, e cuidado com o Dário. Ele é um besouro desconfiado, mas ninguém é teimoso por maldade. Às vezes só falta confiança.',
+    ],
+    onEnd: ['talk:caramujo'],
+  },
+  caramujo_again: { id: 'caramujo_again', speaker: 'Sr. Caramujo', lines: ['Seis folhas macias, jovem. Três para as paredes, três para o telhado. Sem pressa, mas sem parar.'] },
+  caramujo_after: { id: 'caramujo_after', speaker: 'Sr. Caramujo', lines: ['Já vejo o ninho crescendo. Foi você quem começou, Marieta, e isso importa mais do que parece.'] },
+  dario_grumpy: {
+    id: 'dario_grumpy', speaker: 'Dário',
+    lines: ['Quem é você? Eu juntei estas folhas primeiro. Tem pouco para todos, e eu não vou dividir à toa.', 'Se quer minha confiança, traga duas sementes e prove que não é só mais uma que quer o que é meu.'],
+  },
+  dario_thanks: {
+    id: 'dario_thanks', speaker: 'Dário',
+    lines: ['Duas sementes… para mim? Ninguém nunca fez isso. Eu achei que todo mundo só queria tirar de mim.', 'Me desculpe, Marieta. Eu me assustei com a tempestade e acabei virando um chato. Quero ajudar a construir o ninho.'],
+    onEnd: ['give:seed:2', 'flag:dario', 'talk:dario'],
+  },
+  dario_friend: { id: 'dario_friend', speaker: 'Dário', lines: ['Estou dando uma força com as folhas. Obrigado por confiar em mim, Marieta.'] },
+  beto_early: { id: 'beto_early', speaker: 'Beto', lines: ['Estou aqui, no ninho, esperando você. Quando as paredes e o telhado estiverem de pé, venha me ver!'] },
+  beto_nest: {
+    id: 'beto_nest', speaker: 'Beto',
+    lines: [
+      'Olhe só o que você construiu, Marieta. Um lar de verdade, de folhas e de amizade.',
+      'No começo, na enchente, eu só queria ajudar. Mas fui descobrindo que o que eu mais gostava era estar ao seu lado.',
+      'Amanhã, quando o sol nascer no Vale do Novo Amanhecer, a comunidade inteira vai se juntar. Eu queria muito que você estivesse lá comigo.',
+    ],
+    onEnd: ['talk:beto'],
+  },
+  beto_nest_after: { id: 'beto_nest_after', speaker: 'Beto', lines: ['Venha, o Vale do Novo Amanhecer nos espera. Juntos.'] },
+};
+
+/** Diálogos da Fase 7 conforme o estado das missões. */
+export function pickNestDialogue(npc: string, q: QuestLog, flags: Set<string>): DialogueDef {
+  const st = q.state('ninho');
+  if (npc === 'caramujo') {
+    if (st.status === 'active' && st.objective === 0) return N.caramujo_intro;
+    if (st.status === 'active' && st.objective < 4) return N.caramujo_again;
+    return N.caramujo_after;
+  }
+  if (npc === 'dario') {
+    const d = q.state('dario');
+    if (flags.has('dario')) return N.dario_friend;
+    if (d.status === 'active' && d.objective === 1) return N.dario_thanks;
+    return N.dario_grumpy;
+  }
+  if (st.status === 'active' && st.objective === 5) return N.beto_nest;
+  if (st.status === 'active' && st.objective < 5) return N.beto_early;
+  return N.beto_nest_after;
+}

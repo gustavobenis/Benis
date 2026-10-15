@@ -128,3 +128,28 @@ export const LEVEL6_QUESTS: QuestDef[] = [
     objectives: [{ id: 'cr', text: 'Encontre os cristais do vale', type: 'collect', target: 'crystal', count: 2 }],
   },
 ];
+
+/** Missões da Fase 7 — O Ninho Verde (Um Novo Lar). */
+export const LEVEL7_QUESTS: QuestDef[] = [
+  {
+    id: 'ninho',
+    title: 'Construir o novo lar',
+    objectives: [
+      { id: 'caramujo', text: 'Converse com o Sr. Caramujo, o mentor', type: 'talk', target: 'caramujo' },
+      { id: 'folhas', text: 'Junte folhas macias para o ninho', type: 'collect', target: 'leaf', count: 6 },
+      { id: 'paredes', text: 'Erga as paredes do ninho (3 folhas)', type: 'interact', target: 'walls' },
+      { id: 'telhado', text: 'Cubra o ninho com o telhado (3 folhas)', type: 'interact', target: 'roof' },
+      { id: 'ninho', text: 'Entre no Ninho Verde', type: 'reach', target: 'nest' },
+      { id: 'beto', text: 'Converse com Beto, no ninho', type: 'talk', target: 'beto' },
+    ],
+  },
+  {
+    id: 'dario',
+    title: 'Fazer as pazes com Dário',
+    optional: true,
+    objectives: [
+      { id: 'sementes', text: 'Colete 2 sementes para o rival Dário', type: 'collect', target: 'seed', count: 2 },
+      { id: 'entregar', text: 'Entregue as sementes a Dário', type: 'talk', target: 'dario' },
+    ],
+  },
+];

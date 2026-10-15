@@ -3,7 +3,7 @@ import type { AbstractMesh, Scene } from '@babylonjs/core';
 import type { Materials } from '../levels/Materials';
 import { SnailModel } from './Marieta';
 
-export type NpcKind = 'snail' | 'ant' | 'butterfly' | 'beetle' | 'grasshopper' | 'spider' | 'queen' | 'caterpillar' | 'dragonfly' | 'cricket';
+export type NpcKind = 'snail' | 'ant' | 'butterfly' | 'beetle' | 'grasshopper' | 'spider' | 'queen' | 'caterpillar' | 'dragonfly' | 'cricket' | 'rival';
 
 /** Contrato comum dos personagens secundários. */
 export interface NpcModel {
@@ -109,12 +109,13 @@ class ButterflyNpc implements NpcModel {
 
 /** Beto: besouro de carapaça verde-esmeralda com detalhes âmbar. */
 class BeetleNpc implements NpcModel {
+  /** `rival`: Dário, de carapaça bronze e ar desconfiado. */
   readonly root: TransformNode; readonly meshes: AbstractMesh[] = []; hover = 0;
   private ants: TransformNode[] = []; private t = Math.random() * 6; private body: TransformNode;
-  constructor(scene: Scene, mats: Materials) {
-    this.root = new TransformNode('beto', scene);
+  constructor(scene: Scene, mats: Materials, rival = false) {
+    this.root = new TransformNode(rival ? 'dario' : 'beto', scene);
     this.body = new TransformNode('betoBody', scene); this.body.parent = this.root;
-    const shell = pbr(scene, 'betoShell', new Color3(0.07, 0.55, 0.36), 0.2); shell.clearCoat.isEnabled = true; shell.clearCoat.intensity = 1; shell.clearCoat.roughness = 0.05;
+    const shell = pbr(scene, rival ? 'darioShell' : 'betoShell', rival ? new Color3(0.62, 0.3, 0.08) : new Color3(0.07, 0.55, 0.36), 0.2); shell.clearCoat.isEnabled = true; shell.clearCoat.intensity = 1; shell.clearCoat.roughness = 0.05;
     const dark = pbr(scene, 'betoDark', new Color3(0.04, 0.12, 0.09), 0.35), amber = pbr(scene, 'amber', new Color3(0.95, 0.62, 0.12), 0.3);
     const add = (m: Mesh, mat: Mesh['material'], parent: TransformNode = this.body) => { m.material = mat; m.parent = parent; this.meshes.push(m); return m; };
     add(sphere(scene, 1, 1.5, 1.1, 1.9, 0, 0.95, -0.1), shell);
@@ -349,6 +350,7 @@ export function createNpcModel(kind: NpcKind, scene: Scene, mats: Materials): Np
     case 'cricket': return new CricketNpc(scene, mats);
     case 'butterfly': return new ButterflyNpc(scene, mats);
     case 'beetle': return new BeetleNpc(scene, mats);
+    case 'rival': return new BeetleNpc(scene, mats, true);
     case 'grasshopper': return new GrasshopperNpc(scene, mats);
     case 'spider': return new SpiderModel(scene, mats, false);
     default: return new SnailNpc(scene, mats);

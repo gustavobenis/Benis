@@ -5,7 +5,7 @@ import { LevelBase, type Interaction, type LevelHost, type LevelInfo, type MapDa
 import { SealedGate } from './SealedGate';
 import { LEVEL4_QUESTS } from '../data/quests';
 import { pickColonyDialogue } from '../data/dialogues';
-import { AntNpc, MantisModel } from '../player/Npcs';
+import { MantisModel } from '../player/Npcs';
 import { Patrol, type PatrolOpts } from '../game/Patrol';
 import * as D from './level4Data';
 
@@ -35,7 +35,6 @@ export class Level4 extends LevelBase {
   };
   private gate!: SealedGate; private gateMarker!: Mesh; private granaryMarker!: Mesh;
   private mantis!: MantisModel; private patrol = new Patrol(MANTIS); private hazard: string | null = null;
-  private walkers: { ant: AntNpc; pts: [number, number][]; i: number; x: number; z: number }[] = [];
   private granaryMat!: StandardMaterial; private lamp: PointLight;
 
   constructor(scene: Scene, grassMax: number) {
@@ -58,7 +57,7 @@ export class Level4 extends LevelBase {
 
     this.mantis = new MantisModel(scene, this.mats);
     this.casters.push(...(this.mantis.meshes as Mesh[]));
-    this.buildWalkers();
+    this.addWalkers(D.ANT_TRAILS, 2);
     this.grass = new Grass(scene, this.world, {
       max: grassMax, bounds: D.BOUNDS, wallZ: D.GATE.z,
       safe: [{ x: D.START.x, z: D.START.z, r: 9 }, ...D.NPCS.map((n) => ({ x: n.x, z: n.z, r: 6 })), { x: D.GRANARY.x, z: D.GRANARY.z, r: 8 }, { x: D.MOUND.x, z: D.MOUND.z, r: 16 }],
@@ -111,19 +110,6 @@ export class Level4 extends LevelBase {
     this.granaryMarker = this.makeBeacon(a.x, a.z, 0, 10, new Color3(1, 0.8, 0.4)); this.markers.push(this.granaryMarker);
   }
 
-  /** Operárias carregando folhas em trilhas: vida de colônia. */
-  private buildWalkers(): void {
-    D.ANT_TRAILS.forEach((pts, k) => {
-      for (let n = 0; n < 2; n++) {
-        const ant = new AntNpc(this.scene, this.mats); ant.walk = 1; ant.root.scaling.setAll(0.95);
-        const leaf = this.makeLeaf('carry', 0.9, 1.3, k + n, 0.3); leaf.parent = ant.root; leaf.position.set(0, 1.9, -0.8); leaf.rotation.set(0.1, 0, 0); leaf.scaling.setAll(0.7);
-        this.casters.push(...(ant.meshes as Mesh[]));
-        const t = n / 2; const [x0, z0] = pts[0], [x1, z1] = pts[1];
-        this.walkers.push({ ant, pts, i: 1, x: x0 + (x1 - x0) * t, z: z0 + (z1 - z0) * t });
-      }
-    });
-  }
-
   /* ---------- estado ---------- */
   applyFlags(flags: Set<string>): void { if (flags.has('granary')) this.fillGranary(true); }
   resetState(): void { this.restorePickups(); this.gate.close(); this.granaryMat.emissiveColor = new Color3(0, 0, 0); this.lamp.intensity = 0; this.patrol = new Patrol(MANTIS); this.hazard = null; }
@@ -157,12 +143,6 @@ export class Level4 extends LevelBase {
     if (this.patrol.update(dt, playerPos, covered) === 'seen' && this.active) this.hazard = 'O louva-a-deus te viu!';
     this.mantis.root.position.set(this.patrol.x, 0, this.patrol.z); this.mantis.root.rotation.y = this.patrol.yaw;
     this.mantis.setMoving(this.patrol.moving ? 3.4 : 0); this.mantis.animate(dt);
-    for (const w of this.walkers) {
-      const [tx, tz] = w.pts[w.i]; const dx = tx - w.x, dz = tz - w.z, d = Math.hypot(dx, dz);
-      if (d < 0.6) w.i = (w.i + 1) % w.pts.length;
-      else { w.x += (dx / d) * 2.4 * dt; w.z += (dz / d) * 2.4 * dt; w.ant.root.rotation.y = Math.atan2(dx, dz); }
-      w.ant.root.position.set(w.x, 0, w.z); w.ant.animate(dt);
-    }
     this.gate.update(dt);
     this.gateMarker.setEnabled(observing && !this.gate.open);
     this.granaryMarker.setEnabled(observing && !this.gate.open);

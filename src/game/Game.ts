@@ -14,6 +14,7 @@ import { Level3 } from '../levels/Level3';
 import { Level4 } from '../levels/Level4';
 import { Level5 } from '../levels/Level5';
 import { Level6 } from '../levels/Level6';
+import { Level7 } from '../levels/Level7';
 import { MarietaModel } from '../player/Marieta';
 import { BirdShadow } from './BirdShadow';
 import { QuestLog, type QuestNotice } from '../systems/Quests';
@@ -38,6 +39,7 @@ const LEVELS: Record<number, (scene: Scene, grass: number) => LevelBase> = {
   4: (s, g) => new Level4(s, g),
   5: (s, g) => new Level5(s, g),
   6: (s, g) => new Level6(s, g),
+  7: (s, g) => new Level7(s, g),
 };
 
 /** Habilidades aprendidas na Fase 1 (Tito) valem para as fases seguintes. */
@@ -269,9 +271,10 @@ export class Game {
       3: { title: 'Fase concluída!', text: 'Dona Olívia abençoou a travessia. Adiante, o formigueiro está em perigo.', note: 'Fase 4 liberada: A Colônia' },
       4: { title: 'Fase concluída!', text: 'A Rainha agradeceu à joaninha. O céu escurece: a grande tempestade chegou.', note: 'Fase 5 liberada: A Tempestade' },
       5: { title: 'Fase concluída!', text: 'Marieta e Beto atravessaram a enchente juntos e Zuzu os recebeu na colina. A tempestade passou: adiante, um vale à espera de flores.', note: 'Fase 6 liberada: O Vale das Flores' },
-      6: { title: 'Obrigado por jogar!', text: 'O vale floresceu e Freddy tocou a canção da esperança ao pôr do sol. Adiante, o Ninho Verde espera por um novo lar.', note: 'Fim da demo atual — as fases 7 e 8 virão em seguida.' },
+      6: { title: 'Fase concluída!', text: 'O vale floresceu e Freddy tocou a canção da esperança ao pôr do sol. Adiante, o Ninho Verde espera por um novo lar.', note: 'Fase 7 liberada: O Ninho Verde' },
+      7: { title: 'Obrigado por jogar!', text: 'O Ninho Verde está de pé e a comunidade tem um novo lar. Amanhã, no Vale do Novo Amanhecer, a aventura chega ao fim.', note: 'Fim da demo atual — falta a Fase 8.' },
     };
-    const o = OUT[id] ?? OUT[6];
+    const o = OUT[id] ?? OUT[7];
     this.ui.complete({ title: o.title, text: o.text, stats: `${stats}<br><small>${o.note}</small>`, next: hasNext, final: !hasNext });
     this.ui.setTouch(false); this.ui.prompt(null); void this.flushSave();
   }
@@ -528,7 +531,7 @@ export class Game {
   private talkingTo = '';
   private startDialogue(npcId: string): void {
     this.talkingTo = npcId;
-    const d = this.level.info.pickDialogue(npcId, this.quests, this.flags);
+    const d = this.level.info.pickDialogue(npcId, this.quests, this.flags, this.inventory);
     this.dialogue.start(d); this.state = 'dialogue'; this.input.enabled = false;
     this.ui.prompt(null); this.ui.showDialogue(d.speaker, this.dialogue.line); this.audio.interact();
   }
@@ -539,12 +542,13 @@ export class Game {
     if (actions === null) { this.ui.showDialogue(this.dialogue.speaker, this.dialogue.line); return; }
     this.ui.hideDialogue(); this.state = 'playing'; this.input.enabled = true;
     for (const a of actions) this.runAction(a);
-    this.level.talked(this.talkingTo);
+    this.level.talked(this.talkingTo, this.flags);
     this.queueSave();
   }
   private runAction(a: string): void {
     if (a === 'unlockGlide') { this.flags.add('glide'); this.ui.toast('Você aprendeu a planar! ✨', 3000); }
     else if (a.startsWith('flag:')) this.flags.add(a.slice(5));
+    else if (a.startsWith('give:')) { const [, item, n] = a.split(':'); this.inventory.remove(item as ItemId, Number(n)); this.audio.collect(); this.refreshHud(); }
     else if (a.startsWith('talk:')) this.quests.handle({ type: 'talk', target: a.slice(5) });
   }
   private updateDialogue(dt: number, f: InputFrame): void {

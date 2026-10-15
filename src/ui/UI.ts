@@ -22,7 +22,7 @@ export const PHASES = [
   { name: 'O Ninho Verde', sub: 'Um Novo Lar', art: 'radial-gradient(circle at 40% 35%,#c9e07a,#4b7a2a 70%)' },
   { name: 'Juntos Sempre', sub: 'Final', art: 'radial-gradient(circle at 40% 35%,#ffcf8a,#b4582e 70%)' },
 ];
-export const READY_PHASES = 6;
+export const READY_PHASES = 7;
 
 export interface UIHandlers {
   newGame(level: number): void; continueGame(): void; resume(): void; toMenu(): void; freeRoam(): void; nextLevel(): void;

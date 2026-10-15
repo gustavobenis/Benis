@@ -4,7 +4,7 @@ import { CollisionWorld } from '../physics/CollisionWorld';
 import type { Shape, Surface } from '../physics/CollisionWorld';
 import { Materials, rng } from './Materials';
 import { Grass } from './Grass';
-import { createNpcModel, type NpcKind, type NpcModel } from '../player/Npcs';
+import { AntNpc, createNpcModel, type NpcKind, type NpcModel } from '../player/Npcs';
 import type { ItemId, Inventory } from '../systems/Inventory';
 import type { GameEvent, QuestDef, QuestLog } from '../systems/Quests';
 import type { DialogueDef } from '../systems/Dialogue';
@@ -13,7 +13,7 @@ import type { LightPreset } from './Environment';
 import type { Difficulty } from '../systems/Settings';
 
 export interface PickupDef { id: string; kind: ItemId; x: number; y: number; z: number }
-export interface NpcDef { id: string; kind: NpcKind; name: string; x: number; z: number; yaw: number }
+export interface NpcDef { id: string; kind: NpcKind; name: string; x: number; z: number; yaw: number; scale?: number }
 export interface StoneDef { x: number; z: number; r: number; h: number }
 export interface LeafDef { x: number; z: number; y: number; hx: number; hz: number; yaw: number }
 export interface MushroomDef { x: number; z: number; stem: number; capR: number; stemR: number; /** Trampolim: velocidade de lançamento. */ bounce?: number; /** Chapéu luminoso (cor RGB 0..1). */ glow?: [number, number, number] }
@@ -55,7 +55,7 @@ export interface LevelInfo {
   /** Clima da fase: chuva 0..1 e vento visual nas plantas (1 = brisa). */
   weather?: { rain: number; wind: number };
   springs: [number, number, number][];
-  pickDialogue(npc: string, q: QuestLog, flags: Set<string>): DialogueDef;
+  pickDialogue(npc: string, q: QuestLog, flags: Set<string>, inv?: Inventory): DialogueDef;
   birdActive(p: { x: number; y: number; z: number }, q: QuestLog, flags: Set<string>): boolean;
   /** Fase com rio: primeiro resgate narrativo. */
   rescue?: { x: number; z: number; npc: string };
@@ -127,7 +127,7 @@ export abstract class LevelBase {
   abstract update(dt: number, playerPos: Vector3, observing: boolean, toneByPostFx: boolean): void;
 
   /** Chamado pelo jogo quando uma conversa com `npc` termina. */
-  talked(_npc: string): void { /* por padrão, nada */ }
+  talked(_npc: string, _flags: Set<string>): void { /* por padrão, nada */ }
 
   /** Alerta de predador da fase (0..1) para o indicador de perigo. */
   get alert(): number { return 0; }
@@ -300,11 +300,34 @@ export abstract class LevelBase {
       const model = createNpcModel(n.kind, this.scene, this.mats);
       model.root.position.set(n.x, model.hover, n.z); model.root.rotation.y = n.yaw;
       if (n.kind === 'snail') model.root.scaling.setAll(1.3);
+      if (n.scale) model.root.scaling.setAll(n.scale);
       this.casters.push(...(model.meshes as Mesh[]));
       const marker = this.makeBeacon(n.x, n.z, 0, 6, new Color3(1, 0.85, 0.4));
       this.markers.push(marker);
       this.npcs.push({ id: n.id, name: n.name, x: n.x, z: n.z, model, marker });
-      if (n.kind !== 'butterfly') this.world.add({ kind: 'cyl', x: n.x, z: n.z, r: n.kind === 'beetle' ? 1.5 : 1.2, yBase: 0, yTop: 1.6, surface: 'soil' });
+      if (n.kind !== 'butterfly' && n.kind !== 'dragonfly') this.world.add({ kind: 'cyl', x: n.x, z: n.z, r: n.kind === 'beetle' || n.kind === 'rival' ? 1.5 : 1.2, yBase: 0, yTop: 1.6, surface: 'soil' });
+    }
+  }
+
+  /** Operárias carregando folhas por trilhas (vida de comunidade, apenas cenário). */
+  protected addWalkers(trails: [number, number][][], perTrail = 2): void {
+    for (const [k, pts] of trails.entries()) {
+      for (let n = 0; n < perTrail; n++) {
+        const ant = new AntNpc(this.scene, this.mats); ant.walk = 1; ant.root.scaling.setAll(0.95);
+        const leaf = this.makeLeaf('carry', 0.9, 1.3, k + n, 0.3); leaf.parent = ant.root; leaf.position.set(0, 1.9, -0.8); leaf.scaling.setAll(0.7);
+        this.casters.push(...(ant.meshes as Mesh[]));
+        const t = n / perTrail; const [x0, z0] = pts[0], [x1, z1] = pts[1];
+        this.walkers.push({ ant, pts, i: 1, x: x0 + (x1 - x0) * t, z: z0 + (z1 - z0) * t });
+      }
+    }
+  }
+  private walkers: { ant: AntNpc; pts: [number, number][]; i: number; x: number; z: number }[] = [];
+  private updateWalkers(dt: number): void {
+    for (const w of this.walkers) {
+      const [tx, tz] = w.pts[w.i]; const dx = tx - w.x, dz = tz - w.z, d = Math.hypot(dx, dz);
+      if (d < 0.6) w.i = (w.i + 1) % w.pts.length;
+      else { w.x += (dx / d) * 2.4 * dt; w.z += (dz / d) * 2.4 * dt; w.ant.root.rotation.y = Math.atan2(dx, dz); }
+      w.ant.root.position.set(w.x, 0, w.z); w.ant.animate(dt);
     }
   }
 
@@ -393,6 +416,7 @@ export abstract class LevelBase {
   protected updateCommon(dt: number, playerPos: Vector3, observing: boolean, toneByPostFx: boolean): void {
     this.t += dt;
     this.grass.update(this.t, !toneByPostFx);
+    this.updateWalkers(dt);
     for (const p of this.pickups) {
       if (p.taken) continue;
       p.node.position.y = p.def.y + Math.sin(this.t * 2 + p.def.x) * 0.12;
