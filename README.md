@@ -3,7 +3,7 @@
 Aventura 3D de navegador protagonizada por **Marieta**, uma joaninha que atravessa a mata na escala de um inseto.
 Stack: **Babylon.js + TypeScript + Vite** (sem servidor; progresso salvo localmente em IndexedDB).
 
-> **Estado atual: protótipo jogável das Fases 1 (O Jardim), 2 (O Rio), 3 (A Floresta), 4 (A Colônia) e 5 (A Tempestade).** As Fases 6–8 ainda não existem.
+> **Estado atual: protótipo jogável das Fases 1 a 6 (Jardim, Rio, Floresta, Colônia, Tempestade e Vale das Flores).** As Fases 7–8 ainda não existem.
 > Veja [o que está e o que não está pronto](#estado-do-projeto).
 
 ## Rodar no computador (Windows, macOS, Linux)
@@ -83,6 +83,9 @@ alcance patrulha o centro: use os túneis de terra como cobertura. Formigas oper
 **Fase 5 — A Tempestade:** chuva e vento forte. Converse com Beto (que passa a acompanhar Marieta) → junte 3 folhas firmes →
 construa a jangada na beira da enchente → atravesse até a colina → fale com Zuzu. Um círculo brilhante no chão avisa onde um raio
 vai cair (saia dele!); rajadas empurram quem está sem cobertura (abrigue-se sob folhas).
+**Fase 6 — O Vale das Flores:** converse com Rita (libélula) → colete 4 flores raras no topo de flores gigantes: entre numa
+coluna de pólen dourado **estando no ar** e a corrente quente leva você para cima; passe da altura da flor e vá em direção a ela →
+replante o Jardim da Esperança (o vale floresce) → suba ao mirante e fale com Freddy (grilo músico).
 **Vida:** 3 corações; o pássaro e a correnteza tiram um, gotas de orvalho devolvem um. Sem game over.
 
 **Fase 1:** converse com Tito → colete 5 gotas de orvalho → molhe a folha-portão → chegue ao abrigo.
@@ -105,7 +108,8 @@ Opcional: 3 sementes escondidas. Cuidado com a **sombra do pássaro**: esconda-s
 | Fase 3 (floresta, trampolins, teias, aranha-caçadora, altar, Tico, Dona Olívia) | ✅ jogável de ponta a ponta (e2e) |
 | Fase 4 (formigueiro, louva-a-deus, celeiro, Rainha Formiga, Lino) | ✅ jogável de ponta a ponta (e2e) |
 | Fase 5 (chuva, vento, raios avisados, enchente com jangada, Beto companheiro, Zuzu) | ✅ jogável de ponta a ponta (e2e) |
-| Fases 6–8 (Vale das Flores, Ninho Verde, Juntos Sempre), demais amigos (Freddy, Rita, Sr. Caramujo), Dário, cenas românticas finais | ❌ não iniciado |
+| Fase 6 (flores gigantes, correntes de ar quente, jardim que floresce, Rita, Freddy) | ✅ jogável de ponta a ponta (e2e) |
+| Fases 7–8 (Ninho Verde, Juntos Sempre), Sr. Caramujo, Dário, cenas românticas finais | ❌ não iniciado |
 | Modelos Blender/GLB, animações autorais, gravações de áudio | ❌ arte atual é procedural (placeholder de qualidade de protótipo) |
 | Testes em iPhone/Safari e Android reais | ❌ pendente |
 

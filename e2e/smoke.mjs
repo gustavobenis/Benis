@@ -327,8 +327,9 @@ ok(await until("g.quests.currentObjective('vale')?.id === 'flores'", 10000), 'Ri
 await page.screenshot({ path: OUT + '26-fase6-rita.png' });
 // Corrente de ar: entra no ar na coluna de pólen e é levada para cima; com A, pousa sobre a flor gigante
 await tp(-16.5, 3, -58);
+ok(await until('g.body.y > 11', 30000), 'a corrente de ar levanta Marieta acima da altura da flor');
 await page.keyboard.down('a');
-ok(await until('g.body.grounded && g.body.y > 8 && g.body.x < -19', 60000), 'a corrente de ar leva Marieta até o topo da flor gigante');
+ok(await until('g.body.grounded && g.body.y > 8 && g.body.x < -19', 60000), 'depois, Marieta pousa no topo da flor gigante');
 await page.keyboard.up('a');
 await page.screenshot({ path: OUT + '27-fase6-flor-gigante.png' });
 const flowers = await G("g.level.pickups.filter(p => p.def.kind === 'flower').map(p => [p.def.x, p.def.y, p.def.z])");
