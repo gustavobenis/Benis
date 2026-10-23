@@ -12,7 +12,9 @@ import os
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 
 TOKEN = os.environ.get("MG_TOKEN", "")
 URL = os.environ.get("MG_URL", "")
@@ -32,9 +34,19 @@ def notify(text):
             print("falha ao notificar:", e, file=sys.stderr)
 
 
+def current_url():
+    """Troca o startTime copiado do DevTools pelo horário atual."""
+    parts = urllib.parse.urlsplit(URL)
+    query = urllib.parse.parse_qs(parts.query, keep_blank_values=True)
+    if "startTime" in query:
+        now = datetime.now(timezone.utc)
+        query["startTime"] = [now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"]
+    return urllib.parse.urlunsplit(parts._replace(query=urllib.parse.urlencode(query, doseq=True)))
+
+
 def fetch():
     req = urllib.request.Request(
-        URL,
+        current_url(),
         headers={
             "authorization": f"Bearer {TOKEN}",
             "accept": "application/json, text/plain, */*",
